@@ -35,14 +35,14 @@
       <section class="upload-section">
         <div>
           <p class="panel-label">Document intake</p>
-          <h2>上传制度文本</h2>
-          <p class="hint">当前版本支持 UTF-8 或 GBK 编码的 `.txt` 文件。上传后会立即加入检索索引。</p>
+          <h2>上传制度文档</h2>
+          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。上传后会立即加入检索索引。</p>
         </div>
         <form id="upload-form" class="upload-form">
           <label for="upload-title">文档标题</label>
           <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="例如：客户数据导出补充规范" required />
-          <label for="upload-file">文本文件</label>
-          <input id="upload-file" name="file" type="file" accept=".txt,text/plain" required />
+          <label for="upload-file">文档文件</label>
+          <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
           <div class="actions">
             <button id="upload-button" type="submit">上传并入库</button>
             <span id="upload-status" class="upload-status" role="status"></span>

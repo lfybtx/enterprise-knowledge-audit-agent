@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.services.audit import assess
-from app.services.parsers import EmptyDocumentError, UnsupportedFileTypeError, parse_document
+from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document
 from app.services.retrieval import HybridRetriever, grounded_answer
 
 
@@ -117,6 +117,8 @@ async def upload_document(
     except UnsupportedFileTypeError as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
     except EmptyDocumentError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except DocumentParseError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     document_id = str(uuid4())

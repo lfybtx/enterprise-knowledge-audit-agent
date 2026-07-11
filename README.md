@@ -22,7 +22,7 @@
 | Risk audit | Data export, incident response, and legacy-document conflict rules |
 | Evaluation | Four labeled retrieval test cases and a runnable evaluator |
 | Audit trail | In-memory request/ingestion event log |
-| Upload | `.txt` upload, parsing, local file storage, and immediate indexing |
+| Upload | `.txt`、文本型 PDF、`.docx`、`.xlsx` 上传、解析、本地存储和立即索引 |
 | Deployment | Dockerfile and Docker Compose |
 
 ## Run locally
@@ -74,7 +74,7 @@ curl -X POST http://127.0.0.1:8000/api/documents ^
   -d "{\"title\":\"示例制度\",\"source\":\"demo.pdf\",\"content\":\"这是一份至少二十字的示例制度文本，用于验证新文档可以被索引和检索。\"}"
 ```
 
-### Upload a txt document
+### Upload a document
 
 Use the homepage upload form, or send multipart form data to:
 
@@ -85,7 +85,9 @@ POST /api/documents/upload
 Fields:
 
 - `title`: document title
-- `file`: `.txt` file
+- `file`: `.txt`、文本型 `.pdf`、`.docx` 或 `.xlsx`
+
+PDF 当前支持带文本层的文件。扫描件在完成 OCR 之前无法提供可靠引用，接口会明确拒绝空文本。
 
 ## Architecture
 
@@ -95,6 +97,7 @@ See [docs/architecture.md](docs/architecture.md).
 
 - [Lesson 01: FastAPI 最小项目](docs/lesson-01-setup.md)
 - [Lesson 02: 文档上传与解析](docs/lesson-02-upload.md)
+- [Lesson 03: PDF、Word、Excel 解析](docs/lesson-03-parsers.md)
 
 ## Demo script
 
@@ -108,5 +111,5 @@ See [docs/architecture.md](docs/architecture.md).
 
 - Replace local token vectors with embedding + pgvector/Qdrant.
 - Add authenticated tenant isolation and persistent audit logs.
-- Add document parsing for PDF, Word, Excel, and HTML.
+- Add HTML parsing and OCR for scanned PDFs.
 - Add LLM synthesis with strict JSON schema validation and LLM-as-judge evaluation.
