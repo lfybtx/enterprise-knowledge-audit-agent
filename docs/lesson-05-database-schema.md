@@ -25,7 +25,30 @@ knowledge_bases
 2. 数据库能否升级；
 3. 旧功能是否保持可用。
 
-下一小步才会引入 Repository，把上传后的 document 和 chunk 写入这些表。
+## Repository 持久化
+
+Repository 已经把 `KnowledgeDocument` 和 `DocumentChunk` 的写入集中在
+`app/repositories/knowledge_repository.py` 中。上传接口会优先使用 PostgreSQL：
+
+1. 创建或复用 `Local demo knowledge base`；
+2. 保存文件解析后的完整文本到 `documents`；
+3. 保存每一个可检索分块和来源位置到 `document_chunks`；
+4. 重启应用时，从 PostgreSQL 重新载入已上传的文档与分块。
+
+当你直接在宿主机用 Uvicorn 启动，而 `.env` 中的 `db:5432` 无法访问时，应用会继续使用
+`data/runtime/documents.json` 作为本地回退，不会影响前面阶段的学习和验收。
+
+在 Docker Compose 中启动时，数据库可用，上传数据只会写入 PostgreSQL，因此容器重启后仍可检索。
+
+## 持久化验收
+
+确认迁移完成后，执行：
+
+```powershell
+docker compose run --rm app pytest -q
+```
+
+这会额外运行 `tests/test_postgres_persistence.py`：写入一份临时文档、重新查询其分块与定位信息。
 
 ## 安装依赖
 

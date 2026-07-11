@@ -39,9 +39,16 @@ class EvaluationCase(BaseModel):
     expected_document_id: str
 
 
-def load_documents() -> list[dict[str, str]]:
+def load_seed_documents() -> list[dict[str, Any]]:
     with DOCUMENTS_PATH.open(encoding="utf-8") as file:
-        seed_documents = json.load(file)
+        return json.load(file)
+
+
+def load_documents() -> list[dict[str, Any]]:
+    seed_documents = load_seed_documents()
+    persisted_documents = load_persisted_documents()
+    if persisted_documents is not None:
+        return seed_documents + persisted_documents
     if not RUNTIME_DOCUMENTS_PATH.exists():
         return seed_documents
     with RUNTIME_DOCUMENTS_PATH.open(encoding="utf-8") as file:
@@ -49,14 +56,31 @@ def load_documents() -> list[dict[str, str]]:
     return seed_documents + runtime_documents
 
 
-def load_runtime_documents() -> list[dict[str, str]]:
+def load_persisted_documents() -> list[dict[str, Any]] | None:
+    if not os.getenv("DATABASE_URL"):
+        return None
+    from app.db import get_session_factory
+    from app.repositories.knowledge_repository import database_is_ready, load_document_records
+
+    session = get_session_factory()()
+    try:
+        if not database_is_ready(session):
+            return None
+        return load_document_records(session)
+    except RuntimeError:
+        return None
+    finally:
+        session.close()
+
+
+def load_runtime_documents() -> list[dict[str, Any]]:
     if not RUNTIME_DOCUMENTS_PATH.exists():
         return []
     with RUNTIME_DOCUMENTS_PATH.open(encoding="utf-8") as file:
         return json.load(file)
 
 
-def save_runtime_document(document: dict[str, str]) -> None:
+def save_runtime_document(document: dict[str, Any]) -> None:
     RUNTIME_DOCUMENTS_PATH.parent.mkdir(parents=True, exist_ok=True)
     runtime_documents = load_runtime_documents()
     runtime_documents.append(document)
@@ -64,10 +88,42 @@ def save_runtime_document(document: dict[str, str]) -> None:
         json.dump(runtime_documents, file, ensure_ascii=False, indent=2)
 
 
-def add_document(document: dict[str, str]) -> None:
+def add_document(document: dict[str, Any]) -> None:
     global retriever
     documents.append(document)
     retriever = HybridRetriever(documents)
+
+
+def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
+    """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
+    if os.getenv("DATABASE_URL"):
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import (
+            DatabaseUnavailableError,
+            database_is_ready,
+            persist_document,
+        )
+
+        session = get_session_factory()()
+        try:
+            if database_is_ready(session):
+                try:
+                    persisted_document = persist_document(
+                        session,
+                        title=document["title"],
+                        source=document["source"],
+                        file_type=document["file_type"],
+                        content=document["content"],
+                        chunks=document["chunks"],
+                    )
+                    return persisted_document
+                except DatabaseUnavailableError:
+                    pass
+        finally:
+            session.close()
+
+    save_runtime_document(document)
+    return document
 
 
 documents = load_documents()
@@ -108,9 +164,18 @@ def list_documents() -> list[dict[str, Any]]:
 
 @app.post("/api/documents", status_code=201)
 def create_document(payload: DocumentCreate) -> dict[str, str]:
-    document = {"id": str(uuid4()), **payload.model_dump()}
+    document_id = str(uuid4())
+    document = {
+        "id": document_id,
+        **payload.model_dump(),
+        "file_type": "text",
+        "chunks": build_chunks(
+            document_id,
+            [{"text": payload.content, "location": {"kind": "document"}}],
+        ),
+    }
+    document = persist_or_save_runtime(document)
     add_document(document)
-    save_runtime_document(document)
     audit_log.append({"event": "document_ingested", "document_id": document["id"]})
     return {"id": document["id"], "message": "Document indexed"}
 
@@ -148,8 +213,8 @@ async def upload_document(
             [{"text": section.text, "location": section.location} for section in parsed_document.sections],
         ),
     }
+    document = persist_or_save_runtime(document)
     add_document(document)
-    save_runtime_document(document)
     audit_log.append({"event": "document_uploaded", "document_id": document_id, "source": document["source"]})
     return {"id": document_id, "message": "Document uploaded and indexed"}
 
