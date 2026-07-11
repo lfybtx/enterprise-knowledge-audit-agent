@@ -7,6 +7,13 @@ from app.services.retrieval import HybridRetriever
 client = TestClient(main.app)
 
 
+def test_list_documents_returns_numeric_chunk_count():
+    response = client.get("/api/documents")
+
+    assert response.status_code == 200
+    assert all(isinstance(document["chunk_count"], int) for document in response.json())
+
+
 def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")

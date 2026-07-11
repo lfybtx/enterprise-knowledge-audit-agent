@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -93,7 +94,7 @@ def health() -> dict[str, object]:
 
 
 @app.get("/api/documents")
-def list_documents() -> list[dict[str, str]]:
+def list_documents() -> list[dict[str, Any]]:
     return [
         {
             "id": item["id"],
