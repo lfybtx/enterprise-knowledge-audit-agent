@@ -22,6 +22,7 @@
 | Risk audit | Data export, incident response, and legacy-document conflict rules |
 | Evaluation | Four labeled retrieval test cases and a runnable evaluator |
 | Audit trail | In-memory request/ingestion event log |
+| Upload | `.txt` upload, parsing, local file storage, and immediate indexing |
 | Deployment | Dockerfile and Docker Compose |
 
 ## Run locally
@@ -73,9 +74,27 @@ curl -X POST http://127.0.0.1:8000/api/documents ^
   -d "{\"title\":\"示例制度\",\"source\":\"demo.pdf\",\"content\":\"这是一份至少二十字的示例制度文本，用于验证新文档可以被索引和检索。\"}"
 ```
 
+### Upload a txt document
+
+Use the homepage upload form, or send multipart form data to:
+
+```http
+POST /api/documents/upload
+```
+
+Fields:
+
+- `title`: document title
+- `file`: `.txt` file
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md).
+
+## Lessons
+
+- [Lesson 01: FastAPI 最小项目](docs/lesson-01-setup.md)
+- [Lesson 02: 文档上传与解析](docs/lesson-02-upload.md)
 
 ## Demo script
 

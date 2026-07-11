@@ -80,6 +80,27 @@ button:disabled { opacity: 0.65; cursor: wait; }
   border-radius: 8px;
   padding: 22px;
 }
+.upload-section {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 28px;
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  padding: 22px;
+}
+.upload-form { display: grid; gap: 8px; }
+.upload-form label { margin: 0; font-size: 13px; }
+.upload-form input[type="text"],
+.upload-form input[type="file"] {
+  width: 100%;
+  border: 1px solid #c6d2e2;
+  border-radius: 5px;
+  padding: 10px;
+  font: inherit;
+}
+.upload-status { align-self: center; color: #16735a; font-size: 13px; }
 .empty-state { color: #69778c; text-align: center; }
 .results-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 20px; margin-top: 20px; }
 .answer #answer { white-space: pre-line; line-height: 1.7; margin-top: 12px; }
@@ -101,6 +122,6 @@ button:disabled { opacity: 0.65; cursor: wait; }
 @media (max-width: 720px) {
   header { padding: 18px 20px; }
   main { padding: 20px 16px; }
-  .workspace, .results-grid, .document-section { grid-template-columns: 1fr; }
+  .workspace, .results-grid, .document-section, .upload-section { grid-template-columns: 1fr; }
   .metrics { grid-template-columns: repeat(3, 1fr); }
 }

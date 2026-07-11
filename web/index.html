@@ -32,6 +32,23 @@
           <div><span>审计记录</span><strong id="audit-count">0</strong></div>
         </aside>
       </section>
+      <section class="upload-section">
+        <div>
+          <p class="panel-label">Document intake</p>
+          <h2>上传制度文本</h2>
+          <p class="hint">当前版本支持 UTF-8 或 GBK 编码的 `.txt` 文件。上传后会立即加入检索索引。</p>
+        </div>
+        <form id="upload-form" class="upload-form">
+          <label for="upload-title">文档标题</label>
+          <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="例如：客户数据导出补充规范" required />
+          <label for="upload-file">文本文件</label>
+          <input id="upload-file" name="file" type="file" accept=".txt,text/plain" required />
+          <div class="actions">
+            <button id="upload-button" type="submit">上传并入库</button>
+            <span id="upload-status" class="upload-status" role="status"></span>
+          </div>
+        </form>
+      </section>
       <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和风险发现。</section>
       <section id="results" hidden>
         <div class="results-grid">

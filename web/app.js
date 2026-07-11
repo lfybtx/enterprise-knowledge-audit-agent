@@ -68,7 +68,35 @@ async function ask() {
   }
 }
 
+async function uploadDocument(event) {
+  event.preventDefault();
+  const form = $("#upload-form");
+  const button = $("#upload-button");
+  const status = $("#upload-status");
+  const file = $("#upload-file").files[0];
+  if (!file) return;
+
+  button.disabled = true;
+  status.textContent = "上传中...";
+  try {
+    const response = await fetch("/api/documents/upload", {
+      method: "POST",
+      body: new FormData(form)
+    });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || "上传失败");
+    form.reset();
+    status.textContent = "已上传并加入索引";
+    await refreshOverview();
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 $("#ask").addEventListener("click", ask);
+$("#upload-form").addEventListener("submit", uploadDocument);
 $("#example").addEventListener("click", () => {
   $("#question").value = "旧版销售工具允许直接下载完整客户清单，这是否符合现行制度？请列出冲突、风险和整改建议。";
   ask();
