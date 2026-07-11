@@ -1,0 +1,18 @@
+[
+  {
+    "question": "客户数据导出前需要哪些审批？",
+    "expected_document_id": "sales-export-v2"
+  },
+  {
+    "question": "发生数据泄露应该先做什么？",
+    "expected_document_id": "incident-policy-v1"
+  },
+  {
+    "question": "出差住宿标准是多少？",
+    "expected_document_id": "travel-policy-v3"
+  },
+  {
+    "question": "访问客户数据有哪些基本要求？",
+    "expected_document_id": "security-access-v1"
+  }
+]

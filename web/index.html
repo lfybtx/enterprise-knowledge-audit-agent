@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Knowledge Audit Agent</title>
+    <link rel="icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <header>
+      <div>
+        <p class="eyebrow">Enterprise AI Control Room</p>
+        <h1>知识库审计 Agent</h1>
+      </div>
+      <span id="health" class="status">连接中</span>
+    </header>
+    <main>
+      <section class="workspace">
+        <div class="question-panel">
+          <label for="question">向企业制度库提问</label>
+          <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
+          <div class="actions">
+            <button id="ask">运行审计</button>
+            <button id="example" class="secondary">加载冲突案例</button>
+          </div>
+          <p class="hint">回答只基于已检索到的证据，所有结论都保留引用。</p>
+        </div>
+        <aside class="metrics">
+          <div><span>已索引文档</span><strong id="document-count">-</strong></div>
+          <div><span>当前模式</span><strong id="mode">本地证据模式</strong></div>
+          <div><span>审计记录</span><strong id="audit-count">0</strong></div>
+        </aside>
+      </section>
+      <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和风险发现。</section>
+      <section id="results" hidden>
+        <div class="results-grid">
+          <article class="answer">
+            <p class="panel-label">带证据回答</p>
+            <div id="answer"></div>
+          </article>
+          <article class="findings">
+            <p class="panel-label">风险发现</p>
+            <div id="findings"></div>
+          </article>
+        </div>
+        <article class="citations">
+          <p class="panel-label">检索证据</p>
+          <div id="citations"></div>
+        </article>
+      </section>
+      <section class="document-section">
+        <div>
+          <p class="panel-label">知识库内容</p>
+          <h2>当前索引文档</h2>
+        </div>
+        <div id="documents" class="document-list"></div>
+      </section>
+    </main>
+    <script src="/static/app.js"></script>
+  </body>
+</html>
