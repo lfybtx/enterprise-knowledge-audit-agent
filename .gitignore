@@ -4,3 +4,5 @@ __pycache__/
 .pytest_cache/
 *.pyc
 data/runtime/
+server.log
+server.err.log
