@@ -6,6 +6,7 @@ __pycache__/
 data/runtime/
 server.log
 server.err.log
+server-*.log
 tmp/
 data/sample_uploads/*-preview.png
 data/sample_uploads/*.inspect.ndjson
