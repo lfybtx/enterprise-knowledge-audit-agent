@@ -101,6 +101,7 @@ See [docs/architecture.md](docs/architecture.md).
 - [Lesson 02: 文档上传与解析](docs/lesson-02-upload.md)
 - [Lesson 03: PDF、Word、Excel 解析](docs/lesson-03-parsers.md)
 - [Lesson 04: 分块检索与精确引用](docs/lesson-04-chunked-citations.md)
+- [Lesson 05: 数据库模型与初始迁移](docs/lesson-05-database-schema.md)
 
 ## Demo script
 
