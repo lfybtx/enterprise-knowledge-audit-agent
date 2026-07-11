@@ -10,6 +10,10 @@ client = TestClient(main.app)
 def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
     monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
+    original_documents = list(main.documents)
+    original_retriever = main.retriever
+    main.documents[:] = main.load_documents()
+    main.retriever = HybridRetriever(main.documents)
 
     response = client.post(
         "/api/documents/upload",
@@ -29,6 +33,7 @@ def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
     try:
         hits = main.retriever.search("客户名单导出需要区域经理审批吗？", limit=1)
         assert hits[0].document_id == document_id
+        assert hits[0].location_label == "第 1 行"
     finally:
-        main.documents[:] = [document for document in main.documents if document["id"] != document_id]
-        main.retriever = HybridRetriever(main.documents)
+        main.documents[:] = original_documents
+        main.retriever = original_retriever

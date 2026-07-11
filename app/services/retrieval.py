@@ -4,7 +4,9 @@ import math
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Any, Iterable
+
+from app.services.chunking import build_chunks, format_location
 
 
 TOKEN_PATTERN = re.compile(r"[A-Za-z0-9_]+|[\u4e00-\u9fff]{2,}")
@@ -25,19 +27,26 @@ def split_sentences(text: str) -> list[str]:
 
 @dataclass
 class RetrievedChunk:
+    chunk_id: str
     document_id: str
     title: str
     source: str
     text: str
+    location: dict[str, Any]
     score: float
+
+    @property
+    def location_label(self) -> str:
+        return format_location(self.location)
 
 
 class HybridRetriever:
     """Small local retriever that combines BM25-like lexical and cosine scores."""
 
-    def __init__(self, documents: Iterable[dict[str, str]]) -> None:
+    def __init__(self, documents: Iterable[dict[str, Any]]) -> None:
         self.documents = list(documents)
-        self._doc_terms = [Counter(tokenize(document["content"])) for document in self.documents]
+        self.chunks = [chunk for document in self.documents for chunk in self._document_chunks(document)]
+        self._doc_terms = [Counter(tokenize(chunk["text"])) for chunk in self.chunks]
         self._doc_lengths = [sum(terms.values()) for terms in self._doc_terms]
         self._avg_length = sum(self._doc_lengths) / max(1, len(self._doc_lengths))
         self._idf = self._build_idf()
@@ -58,29 +67,50 @@ class HybridRetriever:
             return []
 
         results: list[RetrievedChunk] = []
-        for document, terms, length in zip(self.documents, self._doc_terms, self._doc_lengths):
+        for chunk, terms, length in zip(self.chunks, self._doc_terms, self._doc_lengths):
             lexical = self._bm25(query_terms, terms, length)
             semantic = self._cosine(query_terms, terms)
-            score = 0.72 * lexical + 0.28 * semantic + self._domain_boost(question, document)
+            score = 0.72 * lexical + 0.28 * semantic + self._domain_boost(question, chunk)
             results.append(
                 RetrievedChunk(
-                    document_id=document["id"],
-                    title=document["title"],
-                    source=document["source"],
-                    text=document["content"],
+                    chunk_id=chunk["id"],
+                    document_id=chunk["document_id"],
+                    title=chunk["title"],
+                    source=chunk["source"],
+                    text=chunk["text"],
+                    location=chunk["location"],
                     score=round(score, 4),
                 )
             )
         return sorted(results, key=lambda item: item.score, reverse=True)[:limit]
 
+    def _document_chunks(self, document: dict[str, Any]) -> list[dict[str, Any]]:
+        source_chunks = document.get("chunks")
+        if not source_chunks:
+            source_chunks = build_chunks(
+                document["id"],
+                [{"text": document["content"], "location": {"kind": "document"}}],
+            )
+        return [
+            {
+                "id": chunk["id"],
+                "document_id": document["id"],
+                "title": document["title"],
+                "source": document["source"],
+                "text": chunk["text"],
+                "location": chunk.get("location", {"kind": "document"}),
+            }
+            for chunk in source_chunks
+        ]
+
     @staticmethod
-    def _domain_boost(question: str, document: dict[str, str]) -> float:
+    def _domain_boost(question: str, chunk: dict[str, Any]) -> float:
         """Boost exact business-action matches that are critical for audit retrieval."""
-        searchable_text = f"{document['title']} {document['content']}"
+        searchable_text = f"{chunk['title']} {chunk['text']}"
         boost = 0.0
-        if "导出" in question and "导出" in document["title"]:
+        if "导出" in question and "导出" in chunk["title"]:
             boost += 2.2
-        if "客户" in question and "客户" in document["title"]:
+        if "客户" in question and "客户" in chunk["title"]:
             boost += 0.8
         if "旧版" in question and ("旧版" in searchable_text or "历史" in searchable_text):
             boost += 1.5

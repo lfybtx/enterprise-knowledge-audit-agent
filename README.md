@@ -18,7 +18,7 @@
 | Capability | Implementation |
 | --- | --- |
 | Hybrid retrieval | BM25-like lexical score + cosine score over local terms |
-| Citation | Source title, path, excerpt, and retrieval score |
+| Citation | Source title, path, excerpt, retrieval score, and page/table/sheet location |
 | Risk audit | Data export, incident response, and legacy-document conflict rules |
 | Evaluation | Four labeled retrieval test cases and a runnable evaluator |
 | Audit trail | In-memory request/ingestion event log |
@@ -89,6 +89,8 @@ Fields:
 
 PDF 当前支持带文本层的文件。扫描件在完成 OCR 之前无法提供可靠引用，接口会明确拒绝空文本。
 
+Uploaded files are indexed as chunks. PDF chunks keep page numbers, Word chunks keep paragraph/table positions, Excel chunks keep worksheet and row positions, and TXT chunks keep line numbers.
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md).
@@ -98,6 +100,7 @@ See [docs/architecture.md](docs/architecture.md).
 - [Lesson 01: FastAPI 最小项目](docs/lesson-01-setup.md)
 - [Lesson 02: 文档上传与解析](docs/lesson-02-upload.md)
 - [Lesson 03: PDF、Word、Excel 解析](docs/lesson-03-parsers.md)
+- [Lesson 04: 分块检索与精确引用](docs/lesson-04-chunked-citations.md)
 
 ## Demo script
 
@@ -105,7 +108,8 @@ See [docs/architecture.md](docs/architecture.md).
 2. Show the answer, evidence citations, and “客户数据导出需要审批” risk finding.
 3. Click “加载冲突案例”.
 4. Explain that the Agent finds the 2019 historical guide, compares it with current controls, and outputs a remediation recommendation.
-5. Run `python scripts/run_evaluation.py`.
+5. Upload a PDF, DOCX, or XLSX sample and show that the evidence card includes page, table, sheet, or line location.
+6. Run `python scripts/run_evaluation.py`.
 
 ## Roadmap
 

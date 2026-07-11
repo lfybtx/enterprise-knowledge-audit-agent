@@ -11,7 +11,8 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.services.audit import assess
-from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document
+from app.services.chunking import build_chunks
+from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
 from app.services.retrieval import HybridRetriever, grounded_answer
 
 
@@ -93,7 +94,15 @@ def health() -> dict[str, object]:
 
 @app.get("/api/documents")
 def list_documents() -> list[dict[str, str]]:
-    return [{"id": item["id"], "title": item["title"], "source": item["source"]} for item in documents]
+    return [
+        {
+            "id": item["id"],
+            "title": item["title"],
+            "source": item["source"],
+            "chunk_count": len(item.get("chunks", [])) or 1,
+        }
+        for item in documents
+    ]
 
 
 @app.post("/api/documents", status_code=201)
@@ -113,7 +122,7 @@ async def upload_document(
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
     try:
-        file_type, parsed_text = parse_document(filename, raw_content)
+        parsed_document = parse_document_sections(filename, raw_content)
     except UnsupportedFileTypeError as exc:
         raise HTTPException(status_code=415, detail=str(exc)) from exc
     except EmptyDocumentError as exc:
@@ -131,8 +140,12 @@ async def upload_document(
         "id": document_id,
         "title": title,
         "source": f"data/runtime/uploads/{stored_name}",
-        "file_type": file_type,
-        "content": parsed_text,
+        "file_type": parsed_document.file_type,
+        "content": parsed_document.text,
+        "chunks": build_chunks(
+            document_id,
+            [{"text": section.text, "location": section.location} for section in parsed_document.sections],
+        ),
     }
     add_document(document)
     save_runtime_document(document)
@@ -160,8 +173,11 @@ def ask(payload: QuestionRequest) -> dict[str, object]:
         "citations": [
             {
                 "document_id": item.document_id,
+                "chunk_id": item.chunk_id,
                 "title": item.title,
                 "source": item.source,
+                "location": item.location,
+                "location_label": item.location_label,
                 "excerpt": item.text,
                 "score": item.score,
             }

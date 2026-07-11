@@ -6,6 +6,7 @@ from app.services.parsers import (
     EmptyDocumentError,
     UnsupportedFileTypeError,
     parse_document,
+    parse_document_sections,
     parse_txt,
 )
 
@@ -55,7 +56,7 @@ def test_parse_docx_extracts_paragraphs_and_tables():
 
     assert file_type == "docx"
     assert "区域经理审批" in text
-    assert "[Table 1]" in text
+    assert "[Table 1 Row 2]" in text
     assert "建议动作" in text
 
 
@@ -76,6 +77,16 @@ def test_parse_xlsx_uses_sheet_and_header_labels():
     assert "[Sheet: 客户导出]" in text
     assert "审批人: 区域经理" in text
     assert "保存期限: 7 天" in text
+
+
+def test_parse_txt_sections_keep_line_numbers():
+    parsed = parse_document_sections(
+        "policy.txt",
+        "客户名单导出必须经过区域经理审批。\n导出文件保存期限不得超过七天。".encode("utf-8"),
+    )
+
+    assert parsed.sections[0].location == {"kind": "lines", "start_line": 1, "end_line": 1}
+    assert parsed.sections[1].location == {"kind": "lines", "start_line": 2, "end_line": 2}
 
 
 def make_text_pdf(text: str) -> bytes:

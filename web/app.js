@@ -19,7 +19,7 @@ async function refreshOverview() {
   $("#documents").innerHTML = documents.map((document) => `
     <div class="document">
       <strong>${escapeHtml(document.title)}</strong>
-      <span>${escapeHtml(document.source)}</span>
+      <span>${escapeHtml(document.source)} · ${document.chunk_count} 个检索片段</span>
     </div>
   `).join("");
 }
@@ -39,7 +39,7 @@ function renderResult(payload) {
     <div class="citation">
       <h3>证据 ${index + 1} · ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
       <p>${escapeHtml(citation.excerpt)}</p>
-      <div class="source">${escapeHtml(citation.source)}</div>
+      <div class="source">${escapeHtml(citation.source)} · ${escapeHtml(citation.location_label)}</div>
     </div>
   `).join("");
 }

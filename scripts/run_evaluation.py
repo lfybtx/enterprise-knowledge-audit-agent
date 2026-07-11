@@ -21,10 +21,14 @@ def main():
     passed = 0
 
     for case in cases:
-        actual = retriever.search(case["question"], limit=1)[0].document_id
+        result = retriever.search(case["question"], limit=1)[0]
+        actual = result.document_id
         success = actual == case["expected_document_id"]
         passed += success
-        print(f"{'PASS' if success else 'FAIL'} | {case['question']} | expected={case['expected_document_id']} actual={actual}")
+        print(
+            f"{'PASS' if success else 'FAIL'} | {case['question']} | "
+            f"expected={case['expected_document_id']} actual={actual} location={result.location_label}"
+        )
 
     print(f"\nRecall@1: {passed / len(cases):.1%} ({passed}/{len(cases)})")
 
