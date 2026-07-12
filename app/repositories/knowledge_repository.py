@@ -8,7 +8,15 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
-from app.models import DocumentChunk, KnowledgeBase, KnowledgeBaseMember, KnowledgeDocument, User
+from app.models import (
+    DocumentChunk,
+    KnowledgeBase,
+    KnowledgeBaseMember,
+    KnowledgeDocument,
+    User,
+    WorkflowRun,
+    WorkflowTraceStep,
+)
 from app.services.embeddings import embed_text
 from app.services.retrieval import HybridRetriever, RetrievedChunk
 from app.vector_utils import vector_literal
@@ -332,5 +340,111 @@ def document_to_record(document: KnowledgeDocument) -> dict[str, Any]:
                 "location": chunk.location,
             }
             for chunk in sorted(document.chunks, key=lambda item: item.chunk_index)
+        ],
+    }
+
+
+def persist_workflow_run(
+    session: Session,
+    *,
+    trace_id: str,
+    user_external_id: str,
+    event_type: str,
+    question: str,
+    status: str,
+    duration_ms: int,
+    step_count: int,
+    summary: str,
+    workflow_trace: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    try:
+        run = WorkflowRun(
+            trace_id=trace_id,
+            user_id=user_external_id,
+            event_type=event_type,
+            question=question,
+            status=status,
+            duration_ms=duration_ms,
+            step_count=step_count,
+            summary=summary,
+        )
+        session.add(run)
+        session.flush()
+        for step_index, step in enumerate(workflow_trace, start=1):
+            session.add(
+                WorkflowTraceStep(
+                    workflow_run_id=run.id,
+                    step_index=step_index,
+                    name=str(step["name"]),
+                    status=str(step["status"]),
+                    detail=str(step["detail"]),
+                    duration_ms=int(step["duration_ms"]),
+                    prompt=str(step["prompt"]),
+                    tool_calls=list(step.get("tool_calls", [])),
+                    input_tokens=int(step["input_tokens"]),
+                    output_tokens=int(step["output_tokens"]),
+                    failure_reason=step.get("failure_reason"),
+                )
+            )
+        session.commit()
+        session.refresh(run)
+        return workflow_run_to_record(run)
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("PostgreSQL is unavailable or its workflow schema has not been migrated") from exc
+
+
+def load_audit_event_records(session: Session, user_external_id: str | None = None) -> list[dict[str, Any]]:
+    try:
+        statement = select(WorkflowRun).options(selectinload(WorkflowRun.steps)).order_by(
+            WorkflowRun.created_at, WorkflowRun.id
+        )
+        if user_external_id is not None:
+            statement = statement.where(WorkflowRun.user_id == user_external_id)
+        runs = session.scalars(statement).all()
+        return [workflow_run_to_record(run) for run in runs]
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("PostgreSQL is unavailable or its workflow schema has not been migrated") from exc
+
+
+def load_workflow_trace_records(session: Session, trace_id: str) -> dict[str, Any] | None:
+    try:
+        run = session.scalar(
+            select(WorkflowRun)
+            .options(selectinload(WorkflowRun.steps))
+            .where(WorkflowRun.trace_id == trace_id)
+        )
+        return workflow_run_to_record(run) if run is not None else None
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("PostgreSQL is unavailable or its workflow schema has not been migrated") from exc
+
+
+def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
+    ordered_steps = sorted(run.steps, key=lambda item: item.step_index)
+    return {
+        "event": run.event_type,
+        "trace_id": run.trace_id,
+        "user_id": run.user_id,
+        "question": run.question,
+        "status": run.status,
+        "duration_ms": run.duration_ms,
+        "step_count": run.step_count,
+        "summary": run.summary,
+        "created_at": run.created_at.isoformat() if run.created_at else None,
+        "workflow_trace": [
+            {
+                "name": step.name,
+                "status": step.status,
+                "detail": step.detail,
+                "duration_ms": step.duration_ms,
+                "prompt": step.prompt,
+                "tool_calls": list(step.tool_calls or []),
+                "input_tokens": step.input_tokens,
+                "output_tokens": step.output_tokens,
+                "failure_reason": step.failure_reason,
+            }
+            for step in ordered_steps
         ],
     }

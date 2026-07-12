@@ -86,3 +86,46 @@ class DocumentChunk(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")
+
+
+class WorkflowRun(Base):
+    __tablename__ = "workflow_runs"
+    __table_args__ = (UniqueConstraint("trace_id"),)
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    trace_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    event_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
+    question: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    step_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    steps: Mapped[list[WorkflowTraceStep]] = relationship(
+        back_populates="workflow_run", cascade="all, delete-orphan"
+    )
+
+
+class WorkflowTraceStep(Base):
+    __tablename__ = "workflow_trace_steps"
+    __table_args__ = (UniqueConstraint("workflow_run_id", "step_index"),)
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    workflow_run_id: Mapped[UUID] = mapped_column(
+        ForeignKey("workflow_runs.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    step_index: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(String(60), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    detail: Mapped[str] = mapped_column(Text, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False)
+    tool_calls: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    workflow_run: Mapped[WorkflowRun] = relationship(back_populates="steps")

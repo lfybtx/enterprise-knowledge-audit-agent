@@ -155,6 +155,26 @@ def load_persisted_document_summaries(user_external_id: str) -> list[dict[str, A
         session.close()
 
 
+def load_persisted_audit_log(user_external_id: str) -> list[dict[str, Any]] | None:
+    if not os.getenv("DATABASE_URL"):
+        return None
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import database_is_ready, load_audit_event_records
+
+        session = get_session_factory()()
+    except Exception:
+        return None
+    try:
+        if not database_is_ready(session):
+            return None
+        return load_audit_event_records(session, user_external_id)
+    except RuntimeError:
+        return None
+    finally:
+        session.close()
+
+
 def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> dict[str, Any]:
     """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
     document["owner_id"] = user_external_id
@@ -214,6 +234,70 @@ def search_user_evidence(question: str, user_external_id: str):
             if session is not None:
                 session.close()
     return HybridRetriever(user_documents(user_external_id)).search(question)
+
+
+def persist_audit_event(
+    *,
+    event_type: str,
+    user_external_id: str,
+    question: str,
+    response: dict[str, object],
+) -> None:
+    trace_duration_ms = sum(step["duration_ms"] for step in response["workflow_trace"])
+    if os.getenv("DATABASE_URL"):
+        try:
+            from app.db import get_session_factory
+            from app.repositories.knowledge_repository import (
+                DatabaseUnavailableError,
+                database_is_ready,
+                persist_workflow_run,
+            )
+
+            session = get_session_factory()()
+        except Exception:
+            session = None
+        try:
+            if session is not None and database_is_ready(session):
+                try:
+                    summary = response["answer"] if event_type == "question_answered" else response["report"]["summary"]
+                    persist_workflow_run(
+                        session,
+                        trace_id=str(response["trace_id"]),
+                        user_external_id=user_external_id,
+                        event_type=event_type,
+                        question=question,
+                        status="completed",
+                        duration_ms=trace_duration_ms,
+                        step_count=len(response["workflow_trace"]),
+                        summary=str(summary),
+                        workflow_trace=list(response["workflow_trace"]),
+                    )
+                    return
+                except DatabaseUnavailableError:
+                    pass
+        finally:
+            if session is not None:
+                session.close()
+
+    event_payload = {
+        "event": event_type,
+        "trace_id": response["trace_id"],
+        "question": question,
+        "user_id": user_external_id,
+        "duration_ms": trace_duration_ms,
+        "step_count": len(response["workflow_trace"]),
+    }
+    if event_type == "question_answered":
+        event_payload.update(
+            {
+                "evidence_ids": [item["document_id"] for item in response["citations"]],
+                "risk_levels": [item["level"] for item in response["findings"]],
+                "summary": response["answer"],
+            }
+        )
+    else:
+        event_payload.update({"summary": response["report"]["summary"]})
+    audit_log.append(event_payload)
 
 
 documents = load_documents()
@@ -333,25 +417,16 @@ def ask(
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
-    trace_duration_ms = sum(step["duration_ms"] for step in response["workflow_trace"])
-    audit_log.append(
-        {
-            "event": "question_answered",
-            "trace_id": response["trace_id"],
-            "question": payload.question,
-            "user_id": user_external_id,
-            "duration_ms": trace_duration_ms,
-            "step_count": len(response["workflow_trace"]),
-            "evidence_ids": [item["document_id"] for item in response["citations"]],
-            "risk_levels": [item["level"] for item in response["findings"]],
-        }
-    )
+    persist_audit_event(event_type="question_answered", user_external_id=user_external_id, question=payload.question, response=response)
     return response
 
 
 @app.get("/api/audit-log")
 def get_audit_log(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, object]]:
     user_external_id = normalize_user_id(user_external_id)
+    persisted_audit_log = load_persisted_audit_log(user_external_id)
+    if persisted_audit_log is not None:
+        return persisted_audit_log
     visible_events = [event for event in audit_log if event.get("user_id", DEFAULT_USER_ID) == user_external_id]
     return visible_events[-50:]
 
@@ -389,17 +464,7 @@ def export_audit_report(
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
-    trace_duration_ms = sum(step["duration_ms"] for step in response["workflow_trace"])
-    audit_log.append(
-        {
-            "event": "report_exported",
-            "trace_id": response["trace_id"],
-            "question": payload.question,
-            "user_id": user_external_id,
-            "duration_ms": trace_duration_ms,
-            "step_count": len(response["workflow_trace"]),
-        }
-    )
+    persist_audit_event(event_type="report_exported", user_external_id=user_external_id, question=payload.question, response=response)
 
     try:
         file_bytes, media_type, filename = export_report(response["report"], payload.export_format)
