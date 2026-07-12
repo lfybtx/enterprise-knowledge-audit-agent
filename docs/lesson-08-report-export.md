@@ -39,4 +39,23 @@ POST /api/reports/export
 
 ## 说明
 
-当前 PDF 是轻量实现，目标是先把下载链路和文件格式跑通。后续如果要做更漂亮的版式，可以再切换到更完整的 PDF 生成方案。
+PDF 导出使用 `reportlab`，并嵌入真实中文字体，避免中文被替换成问号或乱码。
+
+如果你本地之前已经启动过服务，需要先更新依赖再重启：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+默认会自动查找 Windows 中文字体，例如：
+
+```text
+C:\Windows\Fonts\simhei.ttf
+C:\Windows\Fonts\msyh.ttf
+```
+
+如果部署环境没有这些字体，可以通过环境变量指定字体文件：
+
+```powershell
+$env:AUDIT_PDF_FONT_PATH="C:\path\to\your\chinese-font.ttf"
+```

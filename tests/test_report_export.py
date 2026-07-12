@@ -1,5 +1,6 @@
 from io import BytesIO
 
+import pytest
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
@@ -12,17 +13,17 @@ client = TestClient(main.app)
 
 def sample_report():
     return {
-        "question": "Can customer data be exported?",
+        "question": "客户数据是否可以直接导出？",
         "overall_level": "high",
         "finding_count": 1,
         "risk_counts": {"high": 1, "medium": 0, "low": 0},
-        "summary": "Manager approval is required.",
+        "summary": "客户数据导出需要经理审批，并保留证据。",
         "findings": [
             {
-                "level": "high",
-                "title": "Export approval required",
-                "rationale": "Approval missing",
-                "recommendation": "Require manager approval",
+                "level": "高",
+                "title": "客户数据导出需要审批",
+                "rationale": "当前证据显示导出前必须完成审批。",
+                "recommendation": "要求区域经理审批并限制导出字段。",
                 "evidence_ids": ["doc-1"],
                 "evidence_sources": [],
             }
@@ -31,11 +32,11 @@ def sample_report():
             {
                 "document_id": "doc-1",
                 "chunk_id": "chunk-1",
-                "title": "Export policy",
+                "title": "客户导出制度",
                 "source": "policy.txt",
                 "location": {"kind": "document"},
-                "location_label": "Document",
-                "excerpt": "Manager approval is required.",
+                "location_label": "第 1 页",
+                "excerpt": "客户数据导出需要经理审批。",
                 "score": 0.92,
             }
         ],
@@ -46,11 +47,13 @@ def test_export_report_markdown_contains_key_sections():
     markdown = export_report_markdown(sample_report())
 
     assert "# Enterprise Knowledge Audit Report" in markdown
-    assert "Question: Can customer data be exported?" in markdown
+    assert "Question: 客户数据是否可以直接导出？" in markdown
+    assert "客户数据导出需要审批" in markdown
     assert "## Findings" in markdown
 
 
 def test_export_report_pdf_is_readable():
+    pytest.importorskip("reportlab")
     pdf_bytes, media_type, filename = export_report(sample_report(), "pdf")
 
     assert media_type == "application/pdf"
@@ -59,6 +62,7 @@ def test_export_report_pdf_is_readable():
 
     reader = PdfReader(BytesIO(pdf_bytes))
     assert len(reader.pages) >= 1
+    assert b"?" not in pdf_bytes[:500]
 
 
 def test_export_api_returns_attachment():

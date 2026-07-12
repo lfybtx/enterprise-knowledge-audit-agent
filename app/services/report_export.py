@@ -1,11 +1,22 @@
 from __future__ import annotations
 
 import json
-import textwrap
+import os
+from pathlib import Path
+from io import BytesIO
 from typing import Any
 
 
 SUPPORTED_EXPORT_FORMATS = {"json", "markdown", "pdf"}
+PDF_FONT_NAME = "AuditReportUnicode"
+PDF_FONT_CANDIDATES = [
+    "C:/Windows/Fonts/simhei.ttf",
+    "C:/Windows/Fonts/msyh.ttf",
+    "C:/Windows/Fonts/msyh.ttc",
+    "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+]
 
 
 def export_report(report: dict[str, Any], export_format: str) -> tuple[bytes, str, str]:
@@ -71,78 +82,152 @@ def export_report_markdown(report: dict[str, Any]) -> str:
 
 
 def export_report_pdf(report: dict[str, Any]) -> bytes:
-    markdown = export_report_markdown(report)
-    lines = []
-    for line in markdown.splitlines():
-        if not line:
-            lines.append("")
-            continue
-        lines.extend(textwrap.wrap(line, width=88, replace_whitespace=False) or [""])
-    return build_simple_pdf(lines)
+    try:
+        from reportlab.lib import colors
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+        from reportlab.lib.units import mm
+        from reportlab.pdfbase import pdfmetrics
+        from reportlab.pdfbase.ttfonts import TTFont
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+    except ImportError as exc:
+        raise RuntimeError("PDF export requires reportlab. Run: pip install -r requirements.txt") from exc
 
-
-def build_simple_pdf(lines: list[str]) -> bytes:
-    page_width = 612
-    page_height = 792
-    margin_left = 54
-    margin_top = 738
-    line_height = 14
-    lines_per_page = 48
-    pages = [lines[index : index + lines_per_page] for index in range(0, len(lines), lines_per_page)] or [[]]
-
-    objects: list[bytes] = []
-    objects.append(b"<< /Type /Catalog /Pages 2 0 R >>")
-    kids = " ".join(f"{3 + page_index * 2} 0 R" for page_index in range(len(pages)))
-    objects.append(f"<< /Type /Pages /Kids [{kids}] /Count {len(pages)} >>".encode("ascii"))
-
-    for page_index, page_lines in enumerate(pages):
-        page_object_id = 3 + page_index * 2
-        content_object_id = page_object_id + 1
-        objects.append(
-            (
-                f"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {page_width} {page_height}] "
-                f"/Resources << /Font << /F1 << /Type /Font /Subtype /Type1 /BaseFont /Helvetica >> >> >> "
-                f"/Contents {content_object_id} 0 R >>"
-            ).encode("ascii")
+    font_path = find_pdf_font_path()
+    if font_path is None:
+        raise RuntimeError(
+            "PDF export requires a Unicode font. Set AUDIT_PDF_FONT_PATH to a Chinese-capable .ttf/.ttc font."
         )
-        content = render_pdf_page_content(page_lines, margin_left, margin_top, line_height)
-        objects.append(b"<< /Length " + str(len(content)).encode("ascii") + b" >>\nstream\n" + content + b"\nendstream")
-
-    output = bytearray(b"%PDF-1.4\n")
-    offsets = [0]
-    for object_id, body in enumerate(objects, start=1):
-        offsets.append(len(output))
-        output.extend(f"{object_id} 0 obj\n".encode("ascii"))
-        output.extend(body)
-        output.extend(b"\nendobj\n")
-
-    xref_offset = len(output)
-    output.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
-    output.extend(b"0000000000 65535 f \n")
-    for offset in offsets[1:]:
-        output.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
-    output.extend(
-        (
-            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
-            f"startxref\n{xref_offset}\n%%EOF\n"
-        ).encode("ascii")
+    if PDF_FONT_NAME not in pdfmetrics.getRegisteredFontNames():
+        pdfmetrics.registerFont(TTFont(PDF_FONT_NAME, str(font_path)))
+    buffer = BytesIO()
+    document = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=16 * mm,
+        bottomMargin=16 * mm,
+        title="Enterprise Knowledge Audit Report",
     )
-    return bytes(output)
+    styles = build_pdf_styles(getSampleStyleSheet(), ParagraphStyle, colors)
+    story = [
+        Paragraph("Enterprise Knowledge Audit Report", styles["Title"]),
+        Spacer(1, 7 * mm),
+        Paragraph(f"<b>Question:</b> {escape_html(str(report['question']))}", styles["Body"]),
+        Paragraph(f"<b>Overall risk:</b> {escape_html(str(report['overall_level']))}", styles["Body"]),
+        Paragraph(f"<b>Finding count:</b> {report['finding_count']}", styles["Body"]),
+        Spacer(1, 5 * mm),
+        Paragraph("Summary", styles["Heading"]),
+        Paragraph(escape_html(str(report["summary"])), styles["Body"]),
+        Spacer(1, 5 * mm),
+        Paragraph("Findings", styles["Heading"]),
+    ]
+
+    for index, finding in enumerate(report["findings"], start=1):
+        story.extend(
+            [
+                Paragraph(f"{index}. {escape_html(str(finding['title']))}", styles["Subheading"]),
+                Paragraph(f"<b>Level:</b> {escape_html(str(finding['level']))}", styles["Body"]),
+                Paragraph(f"<b>Rationale:</b> {escape_html(str(finding['rationale']))}", styles["Body"]),
+                Paragraph(f"<b>Recommendation:</b> {escape_html(str(finding['recommendation']))}", styles["Body"]),
+                Paragraph(f"<b>Evidence IDs:</b> {escape_html(', '.join(finding['evidence_ids']))}", styles["Body"]),
+                Spacer(1, 3 * mm),
+            ]
+        )
+
+    story.extend([Spacer(1, 4 * mm), Paragraph("Evidence", styles["Heading"])])
+    for index, evidence in enumerate(report["evidence"], start=1):
+        story.extend(
+            [
+                Paragraph(f"Evidence {index}: {escape_html(str(evidence['title']))}", styles["Subheading"]),
+                Paragraph(f"<b>Source:</b> {escape_html(str(evidence['source']))}", styles["Body"]),
+                Paragraph(f"<b>Location:</b> {escape_html(str(evidence['location_label']))}", styles["Body"]),
+                Paragraph(f"<b>Score:</b> {evidence['score']}", styles["Body"]),
+                Paragraph(escape_html(str(evidence["excerpt"])), styles["Quote"]),
+                Spacer(1, 3 * mm),
+            ]
+        )
+
+    document.build(story, onFirstPage=draw_footer, onLaterPages=draw_footer)
+    return buffer.getvalue()
 
 
-def render_pdf_page_content(lines: list[str], margin_left: int, margin_top: int, line_height: int) -> bytes:
-    commands = ["BT", "/F1 10 Tf"]
-    for line_index, line in enumerate(lines):
-        y_position = margin_top - line_index * line_height
-        commands.append(f"1 0 0 1 {margin_left} {y_position} Tm")
-        commands.append(f"({escape_pdf_text(to_pdf_safe_text(line))}) Tj")
-    commands.append("ET")
-    return "\n".join(commands).encode("latin-1")
+def build_pdf_styles(sample_styles: Any, paragraph_style_class: Any, colors_module: Any) -> dict[str, Any]:
+    base = {
+        "fontName": PDF_FONT_NAME,
+        "leading": 16,
+        "wordWrap": "CJK",
+        "spaceAfter": 6,
+    }
+    return {
+        "Title": paragraph_style_class(
+            "AuditTitle",
+            parent=sample_styles["Title"],
+            fontName=PDF_FONT_NAME,
+            fontSize=18,
+            leading=24,
+            textColor=colors_module.HexColor("#10243f"),
+            spaceAfter=10,
+        ),
+        "Heading": paragraph_style_class(
+            "AuditHeading",
+            parent=sample_styles["Heading2"],
+            **base,
+            fontSize=13,
+            textColor=colors_module.HexColor("#10243f"),
+        ),
+        "Subheading": paragraph_style_class(
+            "AuditSubheading",
+            parent=sample_styles["Heading3"],
+            **base,
+            fontSize=11,
+            textColor=colors_module.HexColor("#263b57"),
+        ),
+        "Body": paragraph_style_class(
+            "AuditBody",
+            parent=sample_styles["BodyText"],
+            **base,
+            fontSize=10,
+        ),
+        "Quote": paragraph_style_class(
+            "AuditQuote",
+            parent=sample_styles["BodyText"],
+            **base,
+            fontSize=9,
+            leftIndent=10,
+            textColor=colors_module.HexColor("#475569"),
+            backColor=colors_module.HexColor("#f5f7fb"),
+            borderPadding=6,
+        ),
+    }
 
 
-def to_pdf_safe_text(value: str) -> str:
-    return value.encode("latin-1", errors="replace").decode("latin-1")
+def draw_footer(canvas: Any, document: Any) -> None:
+    canvas.saveState()
+    canvas.setFont(PDF_FONT_NAME, 8)
+    canvas.setFillColorRGB(0.39, 0.45, 0.55)
+    canvas.drawRightString(document.pagesize[0] - document.rightMargin, 10 * 2.83465, f"Page {document.page}")
+    canvas.restoreState()
 
 
-def escape_pdf_text(value: str) -> str:
-    return value.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+def escape_html(value: str) -> str:
+    return (
+        value.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
+
+
+def find_pdf_font_path() -> Path | None:
+    configured_path = os.getenv("AUDIT_PDF_FONT_PATH")
+    candidates = [configured_path] if configured_path else []
+    candidates.extend(PDF_FONT_CANDIDATES)
+    for candidate in candidates:
+        if not candidate:
+            continue
+        path = Path(candidate)
+        if path.exists():
+            return path
+    return None

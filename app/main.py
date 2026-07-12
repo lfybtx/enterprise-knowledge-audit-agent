@@ -295,6 +295,8 @@ def export_audit_report(payload: ReportExportRequest) -> Response:
         file_bytes, media_type, filename = export_report(response["report"], payload.export_format)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except RuntimeError as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return Response(
         content=file_bytes,
