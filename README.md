@@ -40,7 +40,7 @@ Open `http://127.0.0.1:8000`.
 
 > Windows 新手环境说明：这里使用普通 `uvicorn`，不使用 `uvicorn[standard]`，避免在 32 位 Python 或未安装 C++ Build Tools 的机器上编译 `httptools` 失败。
 
-普通本地调试只需要 `requirements.txt`。如果你要在宿主机直接连接 PostgreSQL，再额外安装数据库驱动：
+普通本地调试只需要 `requirements.txt`。如果你要在宿主机直接连接 PostgreSQL 或执行 Alembic 迁移，再额外安装数据库依赖：
 
 ```bash
 python -m pip install -r requirements-db.txt
