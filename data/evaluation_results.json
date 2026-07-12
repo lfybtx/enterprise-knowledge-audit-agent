@@ -1,0 +1,811 @@
+{
+  "summary": {
+    "total": 50,
+    "recall_at_1": 0.98,
+    "recall_at_3": 1.0,
+    "citation_accuracy": 0.98,
+    "answer_quality_rate": 1.0
+  },
+  "outcomes": [
+    {
+      "id": "security-access-001",
+      "question": "信息安全访问控制制度里，员工访问客户数据前需要完成什么？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-002",
+      "question": "客户数据访问前是否需要部门负责人审批？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-003",
+      "question": "访问客户数据前是否需要数据保护培训？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "legacy-export-guide",
+        "sales-export-v2"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-004",
+      "question": "未经审批能不能导出客户名单？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-005",
+      "question": "高敏感数据只能在哪里访问？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-006",
+      "question": "发现异常访问后，安全团队应在多久内完成初步处置？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-007",
+      "question": "信息安全访问控制制度对客户数据访问有哪些基本要求？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-008",
+      "question": "客户数据导出和访问权限有什么审批要求？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-009",
+      "question": "异常访问客户数据之后应该由哪个团队处理？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "security-access-010",
+      "question": "信息安全制度中对受管设备访问高敏感数据有什么规定？",
+      "expected_document_id": "security-access-v1",
+      "actual_document_ids": [
+        "security-access-v1",
+        "sales-export-v2",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "security-access-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-001",
+      "question": "销售客户导出操作规范要求销售人员在哪里提交导出申请？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-002",
+      "question": "销售人员因客户拜访需要导出联系人信息时应该走什么流程？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-003",
+      "question": "区域经理审批后可以导出哪些客户字段？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-004",
+      "question": "客户导出是否可以包含身份证号和银行账户？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-005",
+      "question": "销售导出的文件保存期限有什么限制？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-006",
+      "question": "导出客户名单是否需要区域经理审批？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "security-access-v1",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-007",
+      "question": "客户数据导出前，销售人员可以导出哪些商务联系方式？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-008",
+      "question": "销售客户导出规范对高敏感信息有什么禁止要求？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-009",
+      "question": "CRM 中提交客户导出申请后由谁审批？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "security-access-v1",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "sales-export-010",
+      "question": "销售客户导出操作规范里可以导出公司、职位和联系方式吗？",
+      "expected_document_id": "sales-export-v2",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-001",
+      "question": "差旅费用管理办法中一线城市住宿标准是多少？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-002",
+      "question": "其他城市每晚住宿费用不得超过多少？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-003",
+      "question": "超标准住宿报销前需要谁审批？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-004",
+      "question": "机票改签产生额外费用时需要说明什么？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "legacy-export-guide",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-005",
+      "question": "差旅住宿标准如何区分一线城市和其他城市？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-006",
+      "question": "国内差旅住宿超过标准时应该怎么处理？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-007",
+      "question": "报销机票改签费用时是否需要附行程证明？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-008",
+      "question": "差旅费用管理办法对住宿和改签费用有什么要求？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-009",
+      "question": "一线城市每晚 800 元的标准来自哪个制度？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "travel-policy-010",
+      "question": "直属总监审批适用于哪类住宿报销情况？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-001",
+      "question": "疑似数据泄露事件发生后应立即通知哪些团队？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-002",
+      "question": "安全事件响应流程中安全团队负责哪些处置动作？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-003",
+      "question": "对外披露、通知客户或监管机构前需要经过谁审核？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-004",
+      "question": "安全事件关闭前需要形成哪些材料？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-005",
+      "question": "发现疑似数据泄露时是否应该先隔离风险账号？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-006",
+      "question": "安全团队在事件响应中是否需要保留日志？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-007",
+      "question": "数据泄露影响范围应由哪个团队评估？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-008",
+      "question": "安全事件响应流程对法务审核有什么要求？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-009",
+      "question": "事件复盘报告和整改计划应在什么时候形成？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "incident-policy-010",
+      "question": "疑似泄露事件处理流程包括通知、隔离、保留日志和评估影响吗？",
+      "expected_document_id": "incident-policy-v1",
+      "actual_document_ids": [
+        "incident-policy-v1",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "incident-policy-v1",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-001",
+      "question": "历史销售工具使用说明允许旧版客户系统下载什么内容？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "travel-policy-v3"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-002",
+      "question": "旧版客户系统是否可以直接下载完整客户清单？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-003",
+      "question": "历史销售工具说明中，导出后要求如何保管客户清单？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-004",
+      "question": "2019 年旧版销售工具说明是否包含当前数据保护要求？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1",
+        "travel-policy-v3"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-005",
+      "question": "为了提升销售效率，旧版工具是否允许线下整理完整客户清单？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-006",
+      "question": "历史资料中的销售工具使用说明适用于哪个版本的工具？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "travel-policy-v3",
+        "sales-export-v2"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-007",
+      "question": "旧版工具直接下载客户清单的说明是否属于历史资料？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "travel-policy-v3"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-008",
+      "question": "历史销售工具使用说明和当前客户导出规范是否可能冲突？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "sales-export-v2",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "top_document_id": "sales-export-v2",
+      "top_location_kind": "document",
+      "recall_at_1": false,
+      "recall_at_3": true,
+      "citation_correct": false,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-009",
+      "question": "旧版销售工具说明里完整客户清单用于什么目的？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "travel-policy-v3"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    },
+    {
+      "id": "legacy-export-010",
+      "question": "没有包含当前数据保护要求的是哪份历史说明？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1",
+        "travel-policy-v3"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true
+    }
+  ]
+}

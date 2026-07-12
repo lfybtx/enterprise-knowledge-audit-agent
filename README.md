@@ -20,7 +20,7 @@
 | Hybrid retrieval | BM25-like lexical score + cosine score over local terms |
 | Citation | Source title, path, excerpt, retrieval score, and page/table/sheet location |
 | Risk audit | Data export, incident response, and legacy-document conflict rules |
-| Evaluation | Four labeled retrieval test cases and a runnable evaluator |
+| Evaluation | 50 labeled cases with Recall@1/3, citation accuracy, and answer-quality metrics |
 | Audit trail | In-memory request/ingestion event log |
 | Upload | `.txt`、文本型 PDF、`.docx`、`.xlsx` 上传、解析、本地存储和立即索引 |
 | Deployment | Dockerfile and Docker Compose |
@@ -60,7 +60,17 @@ pytest
 python scripts/run_evaluation.py
 ```
 
-The included baseline is designed to reach 100% Recall@1 on the four sample cases. Expand `data/evaluation_cases.json` before presenting the project to employers, and report the real result.
+The included baseline currently reports:
+
+| Metric | Result |
+| --- | --- |
+| Cases | 50 |
+| Recall@1 | 98.0% |
+| Recall@3 | 100.0% |
+| Citation accuracy | 98.0% |
+| Answer quality pass rate | 100.0% |
+
+The script writes the detailed run to `data/evaluation_results.json`.
 
 ## API
 
