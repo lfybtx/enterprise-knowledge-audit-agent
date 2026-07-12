@@ -55,9 +55,8 @@ def run_audit_workflow(
         )
     )
 
-    answer = grounded_answer(question, evidence)
     return {
-        "answer": answer,
+        "answer": grounded_answer(question, evidence),
         "citations": [chunk_to_citation(item) for item in evidence],
         "findings": [finding_to_payload(item) for item in findings],
         "report": report,
@@ -139,9 +138,9 @@ def finding_to_payload(item: AuditFinding) -> dict[str, Any]:
 
 def normalize_level(level: str) -> str:
     value = level.lower()
-    if "high" in value or "高" in level or "楂" in level:
+    if "high" in value or "高" in level:
         return "high"
-    if "medium" in value or "中" in level or "浣" in level:
+    if "medium" in value or "中" in level:
         return "medium"
     return "low"
 

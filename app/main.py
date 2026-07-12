@@ -7,13 +7,14 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.services.chunking import build_chunks
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
-from app.services.retrieval import HybridRetriever, grounded_answer
+from app.services.report_export import export_report
+from app.services.retrieval import HybridRetriever
 from app.services.workflow import run_audit_workflow
 
 
@@ -37,6 +38,11 @@ class QuestionRequest(BaseModel):
 class EvaluationCase(BaseModel):
     question: str
     expected_document_id: str
+
+
+class ReportExportRequest(BaseModel):
+    question: str = Field(min_length=2, max_length=500)
+    export_format: str = Field(default="markdown", pattern="^(json|markdown|pdf)$")
 
 
 def load_seed_documents() -> list[dict[str, Any]]:
@@ -277,3 +283,21 @@ def evaluate(cases: list[EvaluationCase]) -> dict[str, object]:
         )
     passed = sum(1 for item in outcomes if item["passed"])
     return {"total": len(outcomes), "passed": passed, "recall_at_1": round(passed / len(outcomes), 3), "outcomes": outcomes}
+
+
+@app.post("/api/reports/export")
+def export_audit_report(payload: ReportExportRequest) -> Response:
+    response = run_audit_workflow(payload.question, search_evidence)
+    if not response["citations"]:
+        raise HTTPException(status_code=404, detail="No searchable evidence")
+
+    try:
+        file_bytes, media_type, filename = export_report(response["report"], payload.export_format)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    return Response(
+        content=file_bytes,
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
