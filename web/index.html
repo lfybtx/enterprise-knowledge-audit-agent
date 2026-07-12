@@ -13,7 +13,17 @@
         <p class="eyebrow">Enterprise AI Control Room</p>
         <h1>知识库审计 Agent</h1>
       </div>
-      <span id="health" class="status">连接中</span>
+      <div class="header-tools">
+        <label class="user-switcher" for="user-select">
+          <span>当前用户</span>
+          <select id="user-select">
+            <option value="local-demo">Local Demo</option>
+            <option value="demo-alice">Alice</option>
+            <option value="demo-bob">Bob</option>
+          </select>
+        </label>
+        <span id="health" class="status">连接中</span>
+      </div>
     </header>
     <main>
       <section class="workspace">
@@ -24,10 +34,11 @@
             <button id="ask">运行审计</button>
             <button id="example" class="secondary">加载冲突案例</button>
           </div>
-          <p class="hint">回答只基于已检索到的证据，所有结论都保留引用。</p>
+          <p class="hint">回答只基于已检索到的证据，所有结论都会保留引用。</p>
         </div>
         <aside class="metrics">
           <div><span>已索引文档</span><strong id="document-count">-</strong></div>
+          <div><span>当前用户</span><strong id="active-user">local-demo</strong></div>
           <div><span>当前模式</span><strong id="mode">本地证据模式</strong></div>
           <div><span>审计记录</span><strong id="audit-count">0</strong></div>
         </aside>
@@ -36,7 +47,7 @@
         <div>
           <p class="panel-label">Document intake</p>
           <h2>上传制度文档</h2>
-          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。上传后会立即加入检索索引。</p>
+          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。上传后会立即加入当前用户的检索索引。</p>
         </div>
         <form id="upload-form" class="upload-form">
           <label for="upload-title">文档标题</label>
@@ -76,7 +87,7 @@
       <section class="document-section">
         <div>
           <p class="panel-label">知识库内容</p>
-          <h2>当前索引文档</h2>
+          <h2>当前用户可见文档</h2>
         </div>
         <div id="documents" class="document-list"></div>
       </section>

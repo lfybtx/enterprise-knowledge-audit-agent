@@ -1,8 +1,15 @@
 const $ = (selector) => document.querySelector(selector);
+
+const USERS = [
+  { id: "local-demo", label: "Local Demo" },
+  { id: "demo-alice", label: "Alice" },
+  { id: "demo-bob", label: "Bob" },
+];
+
 let lastQuestion = "";
 
 function escapeHtml(value) {
-  return value.replace(/[&<>"']/g, (character) => ({
+  return String(value).replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -11,22 +18,74 @@ function escapeHtml(value) {
   }[character]));
 }
 
+function currentUserId() {
+  const selectedUser = $("#user-select").value;
+  return USERS.some((user) => user.id === selectedUser) ? selectedUser : "local-demo";
+}
+
+function currentUserLabel() {
+  return USERS.find((user) => user.id === currentUserId())?.label || currentUserId();
+}
+
+function authHeaders(extraHeaders = {}) {
+  return {
+    ...extraHeaders,
+    "X-User-Id": currentUserId(),
+  };
+}
+
+function saveCurrentUser() {
+  localStorage.setItem("audit-agent-user-id", currentUserId());
+  $("#active-user").textContent = currentUserLabel();
+}
+
+function restoreCurrentUser() {
+  const storedUser = localStorage.getItem("audit-agent-user-id");
+  if (USERS.some((user) => user.id === storedUser)) {
+    $("#user-select").value = storedUser;
+  }
+  saveCurrentUser();
+}
+
+function clearResult() {
+  lastQuestion = "";
+  $("#results").hidden = true;
+  $("#empty").hidden = false;
+  $("#answer").textContent = "";
+  $("#findings").innerHTML = "";
+  $("#citations").innerHTML = "";
+  $("#upload-status").textContent = "";
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, {
+    ...options,
+    headers: authHeaders(options.headers || {}),
+  });
+  const payload = await response.json();
+  if (!response.ok) throw new Error(payload.detail || "Request failed");
+  return payload;
+}
+
 async function refreshOverview() {
   const [health, documents, audit] = await Promise.all([
     fetch("/api/health").then((response) => response.json()),
-    fetch("/api/documents").then((response) => response.json()),
-    fetch("/api/audit-log").then((response) => response.json()),
+    fetchJson("/api/documents"),
+    fetchJson("/api/audit-log"),
   ]);
   $("#health").textContent = health.status === "ok" ? "Service healthy" : "Service error";
   $("#document-count").textContent = documents.length;
+  $("#active-user").textContent = currentUserLabel();
   $("#mode").textContent = health.llm_enabled ? "LLM + evidence" : "Local evidence mode";
   $("#audit-count").textContent = audit.length;
-  $("#documents").innerHTML = documents.map((document) => `
-    <div class="document">
-      <strong>${escapeHtml(document.title)}</strong>
-      <span>${escapeHtml(document.source)} - ${document.chunk_count} chunks</span>
-    </div>
-  `).join("");
+  $("#documents").innerHTML = documents.length
+    ? documents.map((document) => `
+        <div class="document">
+          <strong>${escapeHtml(document.title)}</strong>
+          <span>${escapeHtml(document.source)} - ${document.chunk_count} chunks</span>
+        </div>
+      `).join("")
+    : '<div class="document muted">当前用户还没有可见文档。</div>';
 }
 
 function renderResult(payload) {
@@ -57,13 +116,11 @@ async function ask() {
   button.disabled = true;
   button.textContent = "Running...";
   try {
-    const response = await fetch("/api/ask", {
+    const payload = await fetchJson("/api/ask", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Request failed");
     renderResult(payload);
     await refreshOverview();
   } catch (error) {
@@ -79,7 +136,7 @@ async function exportReport(exportFormat) {
   if (!question) return;
   const response = await fetch("/api/reports/export", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: authHeaders({ "Content-Type": "application/json" }),
     body: JSON.stringify({ question, export_format: exportFormat }),
   });
   if (!response.ok) {
@@ -111,20 +168,24 @@ async function uploadDocument(event) {
   button.disabled = true;
   status.textContent = "Uploading...";
   try {
-    const response = await fetch("/api/documents/upload", {
+    await fetchJson("/api/documents/upload", {
       method: "POST",
       body: new FormData(form),
     });
-    const payload = await response.json();
-    if (!response.ok) throw new Error(payload.detail || "Upload failed");
     form.reset();
-    status.textContent = "Uploaded and indexed";
+    status.textContent = `Uploaded for ${currentUserLabel()}`;
     await refreshOverview();
   } catch (error) {
     status.textContent = error.message;
   } finally {
     button.disabled = false;
   }
+}
+
+async function switchUser() {
+  saveCurrentUser();
+  clearResult();
+  await refreshOverview();
 }
 
 $("#ask").addEventListener("click", ask);
@@ -135,4 +196,7 @@ $("#example").addEventListener("click", () => {
   $("#question").value = "Can the legacy sales tool directly download the full customer list? Please explain conflicts and remediation.";
   ask();
 });
+$("#user-select").addEventListener("change", switchUser);
+
+restoreCurrentUser();
 refreshOverview();
