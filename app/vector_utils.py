@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-EMBEDDING_DIMENSIONS = 64
+EMBEDDING_DIMENSIONS = 512
 
 
 def vector_literal(values: list[float]) -> str:

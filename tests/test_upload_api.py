@@ -14,6 +14,17 @@ def test_list_documents_returns_numeric_chunk_count():
     assert all(isinstance(document["chunk_count"], int) for document in response.json())
 
 
+def test_model_config_does_not_expose_api_key(monkeypatch):
+    monkeypatch.setenv("MODEL_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("OPENAI_API_KEY", "secret-value")
+
+    response = client.get("/api/model-config")
+
+    assert response.status_code == 200
+    assert response.json()["provider"] == "openai-compatible"
+    assert "secret-value" not in response.text
+
+
 def test_protected_endpoints_require_user_header():
     response = client.get("/api/documents")
 

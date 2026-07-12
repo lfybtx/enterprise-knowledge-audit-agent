@@ -1,0 +1,2 @@
+# Local, API-key-free Chinese embedding model runtime.
+sentence-transformers==3.4.1

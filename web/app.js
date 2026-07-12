@@ -146,7 +146,29 @@ function renderTrace(trace, title = "工作流 trace") {
   `;
 }
 
+function renderEmptyAuditHistory() {
+  const trace = [
+    { name: "检索 Agent", status: "待运行", duration_ms: 0, detail: "从当前知识库执行关键词与向量混合检索，并准备证据引用。", prompt: "等待问题输入", tool_calls: ["keyword_search", "vector_search"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "审计 Agent", status: "待运行", duration_ms: 0, detail: "检查证据中的风险、冲突和缺失信息，形成结构化风险判断。", prompt: "等待检索结果", tool_calls: ["conflict_check", "risk_assessment"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "报告 Agent", status: "待运行", duration_ms: 0, detail: "汇总审计结论、依据、建议动作和来源引用，生成最终报告。", prompt: "等待审计结果", tool_calls: ["report_builder"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+  ];
+  $("#audit-history").innerHTML = `<div class="document muted">当前没有审计记录，可以先查看工作流预览。</div><div class="actions" style="margin-top: 10px;"><button type="button" class="secondary" id="replay-current-trace">查看 Trace 流程</button></div>`;
+  $("#replay-current-trace").addEventListener("click", () => {
+    const previewTrace = lastWorkflowTrace.length ? lastWorkflowTrace : trace;
+    $("#empty").hidden = true;
+    $("#results").hidden = false;
+    $("#answer").textContent = "尚未运行审计，当前显示的是工作流预览。";
+    $("#findings").innerHTML = '<div class="document muted">暂无风险发现</div>';
+    $("#citations").innerHTML = '<div class="document muted">暂无证据引用</div>';
+    renderTrace(previewTrace, "审计工作流 Trace 预览");
+  });
+}
+
 function renderAuditHistory(audit) {
+  if (!audit.length) {
+    renderEmptyAuditHistory();
+    return;
+  }
   if (!audit.length) {
     const canReplayCurrentTrace = Boolean(lastWorkflowTrace.length);
     $("#audit-history").innerHTML = `
@@ -199,8 +221,14 @@ function renderAuditHistory(audit) {
         return;
       }
       selectedTraceId = traceId || "";
+      $("#empty").hidden = true;
+      $("#results").hidden = false;
+      $("#answer").textContent = event.question || event.summary || "该审计记录没有保存回答正文。";
+      $("#findings").innerHTML = '<div class="document muted">历史记录中未保存风险明细，请查看下方 Trace 步骤。</div>';
+      $("#citations").innerHTML = '<div class="document muted">历史记录中未保存证据明细，请查看 Trace 中的检索步骤。</div>';
       renderTrace(event.workflow_trace, `${event.event} - ${traceId}`);
       refreshAuditSelection();
+      $("#trace").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
@@ -368,5 +396,44 @@ $("#example").addEventListener("click", () => {
 $("#user-select").addEventListener("change", switchUser);
 $("#knowledge-base-select").addEventListener("change", switchKnowledgeBase);
 
+function restoreChineseUi() {
+  document.title = "企业知识库审计 Agent";
+  const text = {
+    ".eyebrow": "企业 AI 审计控制台",
+    "header h1": "企业知识库审计 Agent",
+    ".user-switcher span": "当前用户",
+    ".question-panel label": "向企业知识库提问",
+    ".question-panel .hint": "回答只基于已检索到的证据，所有结论都会保留引用。",
+    ".upload-section .panel-label": "文档接入",
+    ".upload-section h2": "上传制度文档",
+    ".upload-section .hint": "支持 TXT、PDF、Word 和 Excel；viewer 角色不能上传。",
+    ".evaluation-section .panel-label": "评测基线",
+    ".results-toolbar .panel-label": "导出报告",
+    ".answer .panel-label": "带证据回答",
+    ".findings .panel-label": "风险发现",
+    ".citations .panel-label": "检索证据",
+    ".trace .panel-label": "工作流追踪",
+    ".audit-history .panel-label": "审计历史",
+    ".audit-history h2": "最近的问答与导出",
+    ".document-section .panel-label": "知识库内容",
+    ".document-section h2": "当前知识库可见文档",
+  };
+  Object.entries(text).forEach(([selector, value]) => { const node = $(selector); if (node) node.textContent = value; });
+  $("#ask").textContent = "运行审计";
+  $("#example").textContent = "加载冲突案例";
+  $("#health").textContent = "连接中";
+  const metricLabels = document.querySelectorAll(".metrics div span");
+  ["已索引文档", "当前用户", "当前角色", "审计记录"].forEach((value, index) => { if (metricLabels[index]) metricLabels[index].textContent = value; });
+  $("#export-md").textContent = "Markdown";
+  $("#export-pdf").textContent = "PDF";
+  $("#question").value = "销售是否可以直接导出完整客户名单？请说明风险和正确流程。";
+  $("#upload-title").placeholder = "客户导出制度";
+  const labels = document.querySelectorAll("#upload-form > label");
+  ["知识库", "文档标题", "文档文件"].forEach((value, index) => { if (labels[index]) labels[index].textContent = value; });
+  const options = $("#user-select").options;
+  if (options.length >= 3) { options[0].textContent = "本地演示"; options[1].textContent = "Alice"; options[2].textContent = "Bob"; }
+}
+
+restoreChineseUi();
 restorePreferences();
 refreshOverview();

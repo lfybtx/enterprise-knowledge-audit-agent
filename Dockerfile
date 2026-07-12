@@ -7,8 +7,9 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends libpq5 fonts-wqy-microhei fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt requirements-db.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-db.txt
+COPY requirements.txt requirements-db.txt requirements-local-models.txt ./
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.5.1+cpu \
+    && pip install --no-cache-dir -r requirements.txt -r requirements-db.txt -r requirements-local-models.txt
 
 COPY . .
 

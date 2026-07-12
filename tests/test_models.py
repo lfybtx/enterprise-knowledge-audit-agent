@@ -47,7 +47,7 @@ def test_document_chunk_has_unique_document_index_constraint():
 
 def test_document_chunk_has_vector_embedding_column():
     assert "embedding" in DocumentChunk.__table__.columns
-    assert DocumentChunk.__table__.columns["embedding"].type.get_col_spec() == "vector(64)"
+    assert DocumentChunk.__table__.columns["embedding"].type.get_col_spec() == "vector(512)"
 
 
 def test_knowledge_base_membership_has_unique_user_constraint_and_role():

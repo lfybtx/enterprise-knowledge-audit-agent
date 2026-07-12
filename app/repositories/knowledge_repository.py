@@ -17,7 +17,7 @@ from app.models import (
     WorkflowRun,
     WorkflowTraceStep,
 )
-from app.services.embeddings import embed_text
+from app.services.embeddings import embed_query, embed_text, embed_texts
 from app.services.retrieval import HybridRetriever, RetrievedChunk
 from app.vector_utils import vector_literal
 
@@ -113,7 +113,9 @@ def persist_document(
         session.add(document)
         session.flush()
 
-        for chunk_index, chunk in enumerate(chunks, start=1):
+        chunk_list = list(chunks)
+        embeddings = embed_texts([str(chunk["text"]) for chunk in chunk_list])
+        for chunk_index, (chunk, embedding) in enumerate(zip(chunk_list, embeddings), start=1):
             chunk_text = str(chunk["text"])
             session.add(
                 DocumentChunk(
@@ -121,7 +123,7 @@ def persist_document(
                     chunk_index=chunk_index,
                     text=chunk_text,
                     location=dict(chunk.get("location", {"kind": "document"})),
-                    embedding=embed_text(chunk_text),
+                    embedding=embedding,
                 )
             )
 
@@ -234,7 +236,7 @@ def semantic_search_chunks(
     limit: int = 12,
     user_external_id: str | None = None,
 ) -> list[RetrievedChunk]:
-    embedding = vector_literal(embed_text(question))
+    embedding = vector_literal(embed_query(question))
     membership_join = ""
     membership_filter = ""
     params: dict[str, Any] = {"embedding": embedding, "limit": limit}

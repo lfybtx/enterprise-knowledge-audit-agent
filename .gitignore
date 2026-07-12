@@ -4,6 +4,7 @@ __pycache__/
 .pytest_cache/
 *.pyc
 data/runtime/
+data/models/
 server.log
 server.err.log
 server-*.log

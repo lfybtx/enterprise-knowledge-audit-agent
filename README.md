@@ -62,6 +62,50 @@ For direct host-side PostgreSQL or Alembic work, install the optional database d
 python -m pip install -r requirements-db.txt
 ```
 
+### Model Provider Modes
+
+The default `.env` setting is `MODEL_PROVIDER=local-hf`. It downloads the
+open-source `BAAI/bge-small-zh-v1.5` embedding model into `data/models` on its
+first use, then runs locally without an API key. This is the recommended mode
+for Chinese enterprise-document retrieval. Use `MODEL_PROVIDER=local` only for
+the deterministic, dependency-free test fallback.
+
+For a host-side Windows run, install the CPU runtime first, then the local
+model dependency:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
+.\.venv\Scripts\python.exe -m pip install -r requirements-local-models.txt
+```
+
+Docker performs the same CPU-only installation during `docker compose build`.
+After the image is built, download and cache the model explicitly with:
+
+```bash
+docker compose run --rm app python scripts/download_local_model.py
+```
+
+To prepare for an OpenAI-compatible provider, update `.env` without committing
+the key:
+
+```env
+MODEL_PROVIDER=openai-compatible
+OPENAI_API_KEY=your_api_key
+OPENAI_BASE_URL=https://api.openai.com/v1
+OPENAI_CHAT_MODEL=gpt-4.1-mini
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+OPENAI_EMBEDDING_DIMENSIONS=512
+```
+
+`GET /api/model-config` shows the active provider and model names but never
+returns the API key. In `openai-compatible` mode, document chunks and search
+queries use the provider's `/embeddings` endpoint. The current database schema
+uses `vector(512)`, so `OPENAI_EMBEDDING_DIMENSIONS` must remain `512`.
+
+When switching an existing PostgreSQL database from the old 64-dimensional
+development vectors, run `alembic upgrade head`. The migration recreates the
+vector column and the application backfills embeddings from stored chunk text.
+
 ## Run With Docker
 
 ```bash

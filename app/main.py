@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.services.chunking import build_chunks
+from app.services.model_provider import ModelConfigurationError, ModelProviderSettings
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
 from app.services.report_export import export_report
 from app.services.retrieval import HybridRetriever
@@ -378,7 +379,20 @@ def favicon() -> FileResponse:
 
 @app.get("/api/health")
 def health() -> dict[str, object]:
-    return {"status": "ok", "document_count": len(documents), "llm_enabled": bool(os.getenv("OPENAI_API_KEY"))}
+    try:
+        model_status = ModelProviderSettings.from_environment().public_status()
+    except ModelConfigurationError as error:
+        model_status = {"provider": "invalid", "remote_enabled": False, "configuration_error": str(error)}
+    return {"status": "ok", "document_count": len(documents), "model": model_status}
+
+
+@app.get("/api/model-config")
+def get_model_config() -> dict[str, object]:
+    """Expose active model mode without ever returning the API key."""
+    try:
+        return ModelProviderSettings.from_environment().public_status()
+    except ModelConfigurationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @app.get("/api/me")

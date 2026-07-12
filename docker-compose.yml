@@ -24,6 +24,7 @@ services:
       - .env
     volumes:
       - ./data/runtime:/app/data/runtime
+      - ./data/models:/app/data/models
     depends_on:
       db:
         condition: service_healthy
