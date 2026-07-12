@@ -7,6 +7,7 @@ const USERS = [
 ];
 
 let lastQuestion = "";
+let lastWorkflowTrace = [];
 let selectedTraceId = "";
 let selectedKnowledgeBaseId = "";
 let knowledgeBases = [];
@@ -63,12 +64,13 @@ function applyPermissions() {
   const kb = currentKnowledgeBase();
   const canWrite = Boolean(kb?.can_write);
   $("#active-role").textContent = kb?.role || "-";
-  $("#upload-status").textContent = canWrite ? "" : "This role cannot upload documents.";
+  $("#upload-status").textContent = canWrite ? "" : "当前角色无上传权限。";
   setUploadEnabled(canWrite);
 }
 
 function clearResult() {
   lastQuestion = "";
+  lastWorkflowTrace = [];
   selectedTraceId = "";
   $("#results").hidden = true;
   $("#empty").hidden = false;
@@ -82,7 +84,7 @@ function clearResult() {
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.detail || "Request failed");
+  if (!response.ok) throw new Error(payload.detail || "请求失败");
   return payload;
 }
 
@@ -106,11 +108,11 @@ function renderKnowledgeBaseOptions(items) {
 function renderEvaluationResults(payload) {
   const summary = payload.summary || {};
   $("#evaluation-summary").innerHTML = [
-    ["Cases", summary.total ?? 0],
+    ["题目数", summary.total ?? 0],
     ["Recall@1", percent(summary.recall_at_1)],
     ["Recall@3", percent(summary.recall_at_3)],
-    ["Citation accuracy", percent(summary.citation_accuracy)],
-    ["Answer quality", percent(summary.answer_quality_rate)],
+    ["引用准确率", percent(summary.citation_accuracy)],
+    ["回答质量", percent(summary.answer_quality_rate)],
   ].map(([label, value]) => `
     <div class="evaluation-card">
       <span>${escapeHtml(label)}</span>
@@ -119,11 +121,11 @@ function renderEvaluationResults(payload) {
   `).join("");
 }
 
-function renderTrace(trace, title = "Workflow trace") {
+function renderTrace(trace, title = "工作流 trace") {
   if (!trace || !trace.length) {
     $("#trace").innerHTML = `
       <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
-      <div class="document muted">No workflow trace is available for this audit record.</div>
+      <div class="document muted">当前没有可展示的流程步骤。</div>
     `;
     return;
   }
@@ -146,15 +148,32 @@ function renderTrace(trace, title = "Workflow trace") {
 
 function renderAuditHistory(audit) {
   if (!audit.length) {
-    $("#audit-history").innerHTML = '<div class="document muted">No audit records yet. Run an audit first, then the trace can be replayed here.</div>';
+    const canReplayCurrentTrace = Boolean(lastWorkflowTrace.length);
+    $("#audit-history").innerHTML = `
+      <div class="document muted">当前没有审计记录，先运行一次审计。</div>
+      <div class="actions" style="margin-top: 10px;">
+        <button type="button" class="secondary" id="replay-current-trace" ${canReplayCurrentTrace ? "" : "disabled"}>
+          ${canReplayCurrentTrace ? "查看当前 trace" : "暂无 trace"}
+        </button>
+      </div>
+    `;
+    const replayButton = $("#replay-current-trace");
+    if (replayButton) {
+      replayButton.addEventListener("click", () => {
+        if (!lastWorkflowTrace.length) return;
+        selectedTraceId = "";
+        renderTrace(lastWorkflowTrace, "当前流程 trace");
+      });
+    }
     return;
   }
+
   $("#audit-history").innerHTML = audit.map((event) => {
     const traceId = event.trace_id || "";
     const hasTrace = Boolean(traceId && event.workflow_trace && event.workflow_trace.length);
     const isSelected = hasTrace && traceId === selectedTraceId;
-    const label = event.event === "report_exported" ? "Export" : "Question";
-    const summary = event.summary || event.question || "No summary";
+    const label = event.event === "report_exported" ? "导出" : "问答";
+    const summary = event.summary || event.question || "暂无摘要";
     return `
       <div class="audit-item ${isSelected ? "selected" : ""}">
         <div class="audit-item-main">
@@ -164,7 +183,7 @@ function renderAuditHistory(audit) {
         </div>
         <div class="audit-item-actions">
           <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}" ${hasTrace ? "" : "disabled"}>
-            ${hasTrace ? "View trace" : "No trace"}
+            ${hasTrace ? "查看 trace" : "暂无 trace"}
           </button>
         </div>
       </div>
@@ -176,7 +195,7 @@ function renderAuditHistory(audit) {
       const traceId = button.getAttribute("data-trace-id");
       const event = audit.find((item) => item.trace_id === traceId);
       if (!event || !event.workflow_trace || !event.workflow_trace.length) {
-        renderTrace([], "Workflow trace");
+        renderTrace([], "工作流 trace");
         return;
       }
       selectedTraceId = traceId || "";
@@ -201,7 +220,7 @@ async function refreshOverview() {
     fetchJson("/api/evaluation-results").catch(() => ({ summary: {} })),
     fetchJson("/api/knowledge-bases"),
   ]);
-  $("#health").textContent = health.status === "ok" ? "Service healthy" : "Service error";
+  $("#health").textContent = health.status === "ok" ? "服务正常" : "服务异常";
   $("#document-count").textContent = documents.length;
   $("#active-user").textContent = `${me.display_name} (${me.id})`;
   $("#audit-count").textContent = audit.length;
@@ -215,7 +234,7 @@ async function refreshOverview() {
           <span>${escapeHtml(document.source)} - ${document.chunk_count} chunks</span>
         </div>
       `).join("")
-    : `<div class="document muted">${escapeHtml(me.display_name)} has no visible documents.</div>`;
+    : `<div class="document muted">${escapeHtml(me.display_name)} 当前没有可见文档。</div>`;
   renderAuditHistory(audit);
   renderEvaluationResults(evaluation);
   if (selectedTraceId) {
@@ -234,18 +253,19 @@ function renderResult(payload) {
     <div class="finding ${finding.level.toLowerCase().includes("high") ? "high" : ""}">
       <h3>${escapeHtml(finding.level)} - ${escapeHtml(finding.title)}</h3>
       <p>${escapeHtml(finding.rationale)}</p>
-      <p><strong>Recommendation:</strong> ${escapeHtml(finding.recommendation)}</p>
+      <p><strong>建议动作：</strong> ${escapeHtml(finding.recommendation)}</p>
     </div>
   `).join("");
   $("#citations").innerHTML = payload.citations.map((citation, index) => `
     <div class="citation">
-      <h3>Evidence ${index + 1} - ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
+      <h3>证据 ${index + 1} - ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
       <p>${escapeHtml(citation.excerpt)}</p>
       <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
     </div>
   `).join("");
   selectedTraceId = "";
-  renderTrace(payload.workflow_trace, `Current trace - ${payload.trace_id}`);
+  lastWorkflowTrace = payload.workflow_trace || [];
+  renderTrace(lastWorkflowTrace, `当前流程 trace - ${payload.trace_id}`);
 }
 
 async function ask() {
@@ -254,7 +274,7 @@ async function ask() {
   if (!question) return;
   lastQuestion = question;
   button.disabled = true;
-  button.textContent = "Running...";
+  button.textContent = "运行中...";
   try {
     const payload = await fetchJson("/api/ask", {
       method: "POST",
@@ -267,7 +287,7 @@ async function ask() {
     alert(error.message);
   } finally {
     button.disabled = false;
-    button.textContent = "Run audit";
+    button.textContent = "运行审计";
   }
 }
 
@@ -281,7 +301,7 @@ async function exportReport(exportFormat) {
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(payload.detail || "Export failed");
+    throw new Error(payload.detail || "导出失败");
   }
   const blob = await response.blob();
   const disposition = response.headers.get("Content-Disposition") || "";
@@ -300,7 +320,7 @@ async function exportReport(exportFormat) {
 async function uploadDocument(event) {
   event.preventDefault();
   if (!currentKnowledgeBase()?.can_write) {
-    $("#upload-status").textContent = "This role cannot upload documents.";
+    $("#upload-status").textContent = "当前角色无上传权限。";
     return;
   }
   const form = $("#upload-form");
@@ -310,12 +330,12 @@ async function uploadDocument(event) {
   if (!file) return;
 
   button.disabled = true;
-  status.textContent = "Uploading...";
+  status.textContent = "上传中...";
   try {
     await fetchJson("/api/documents/upload", { method: "POST", body: new FormData(form) });
     form.reset();
     $("#knowledge-base-select").value = selectedKnowledgeBaseId;
-    status.textContent = `Uploaded for ${currentUserLabel()}`;
+    status.textContent = `已为 ${currentUserLabel()} 上传`;
     await refreshOverview();
   } catch (error) {
     status.textContent = error.message;
@@ -342,7 +362,7 @@ $("#upload-form").addEventListener("submit", uploadDocument);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {
-  $("#question").value = "Can the legacy sales tool directly download the full customer list? Explain the conflict with current policy and suggest remediation.";
+  $("#question").value = "旧版销售工具是否可以直接下载完整客户名单？请说明与当前制度的冲突，并给出整改建议。";
   ask();
 });
 $("#user-select").addEventListener("change", switchUser);
