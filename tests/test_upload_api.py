@@ -15,6 +15,7 @@ def test_list_documents_returns_numeric_chunk_count():
 
 
 def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
     original_documents = list(main.documents)
