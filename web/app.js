@@ -54,6 +54,7 @@ function clearResult() {
   $("#answer").textContent = "";
   $("#findings").innerHTML = "";
   $("#citations").innerHTML = "";
+  $("#trace").innerHTML = "";
   $("#upload-status").textContent = "";
 }
 
@@ -105,6 +106,18 @@ function renderResult(payload) {
       <h3>Evidence ${index + 1} - ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
       <p>${escapeHtml(citation.excerpt)}</p>
       <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
+    </div>
+  `).join("");
+  $("#trace").innerHTML = payload.workflow_trace.map((step, index) => `
+    <div class="trace-item">
+      <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} · ${step.duration_ms} ms</small></h3>
+      <p>${escapeHtml(step.detail)}</p>
+      <div class="trace-meta">
+        <span>Prompt: ${escapeHtml(step.prompt)}</span>
+        <span>Tools: ${escapeHtml(step.tool_calls.join(", "))}</span>
+        <span>Tokens: in ${step.input_tokens}, out ${step.output_tokens}</span>
+        <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
+      </div>
     </div>
   `).join("");
 }

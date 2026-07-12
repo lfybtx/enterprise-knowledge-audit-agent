@@ -333,11 +333,15 @@ def ask(
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
+    trace_duration_ms = sum(step["duration_ms"] for step in response["workflow_trace"])
     audit_log.append(
         {
             "event": "question_answered",
+            "trace_id": response["trace_id"],
             "question": payload.question,
             "user_id": user_external_id,
+            "duration_ms": trace_duration_ms,
+            "step_count": len(response["workflow_trace"]),
             "evidence_ids": [item["document_id"] for item in response["citations"]],
             "risk_levels": [item["level"] for item in response["findings"]],
         }
@@ -385,6 +389,17 @@ def export_audit_report(
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
+    trace_duration_ms = sum(step["duration_ms"] for step in response["workflow_trace"])
+    audit_log.append(
+        {
+            "event": "report_exported",
+            "trace_id": response["trace_id"],
+            "question": payload.question,
+            "user_id": user_external_id,
+            "duration_ms": trace_duration_ms,
+            "step_count": len(response["workflow_trace"]),
+        }
+    )
 
     try:
         file_bytes, media_type, filename = export_report(response["report"], payload.export_format)
