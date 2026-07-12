@@ -11,7 +11,7 @@
     <header>
       <div>
         <p class="eyebrow">Enterprise AI Control Room</p>
-        <h1>知识库审计 Agent</h1>
+        <h1>企业知识库审计 Agent</h1>
       </div>
       <div class="header-tools">
         <label class="user-switcher" for="user-select">
@@ -43,6 +43,7 @@
           <div><span>审计记录</span><strong id="audit-count">0</strong></div>
         </aside>
       </section>
+
       <section class="upload-section">
         <div>
           <p class="panel-label">Document intake</p>
@@ -60,6 +61,15 @@
           </div>
         </form>
       </section>
+
+      <section class="evaluation-section">
+        <div>
+          <p class="panel-label">Evaluation baseline</p>
+          <h2>评测基线</h2>
+        </div>
+        <div id="evaluation-summary" class="evaluation-grid"></div>
+      </section>
+
       <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和风险发现。</section>
       <section id="results" hidden>
         <div class="results-toolbar">
@@ -88,6 +98,7 @@
           <div id="trace"></div>
         </article>
       </section>
+
       <section class="audit-history">
         <div>
           <p class="panel-label">审计历史</p>
@@ -95,6 +106,7 @@
         </div>
         <div id="audit-history" class="audit-history-list"></div>
       </section>
+
       <section class="document-section">
         <div>
           <p class="panel-label">知识库内容</p>
@@ -103,6 +115,6 @@
         <div id="documents" class="document-list"></div>
       </section>
     </main>
-    <script src="/static/app.js?v=20260712-trace-history"></script>
+    <script src="/static/app.js?v=20260712-evaluation"></script>
   </body>
 </html>

@@ -432,6 +432,15 @@ def get_audit_log(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=
     return visible_events[-50:]
 
 
+@app.get("/api/evaluation-results")
+def get_evaluation_results() -> dict[str, object]:
+    results_path = ROOT / "data" / "evaluation_results.json"
+    if not results_path.exists():
+        raise HTTPException(status_code=404, detail="Evaluation results have not been generated")
+    with results_path.open(encoding="utf-8") as file:
+        return json.load(file)
+
+
 @app.post("/api/evaluate")
 def evaluate(
     cases: list[EvaluationCase],

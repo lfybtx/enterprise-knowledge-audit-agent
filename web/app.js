@@ -29,10 +29,7 @@ function currentUserLabel() {
 }
 
 function authHeaders(extraHeaders = {}) {
-  return {
-    ...extraHeaders,
-    "X-User-Id": currentUserId(),
-  };
+  return { ...extraHeaders, "X-User-Id": currentUserId() };
 }
 
 function saveCurrentUser() {
@@ -70,6 +67,26 @@ async function fetchJson(url, options = {}) {
   return payload;
 }
 
+function percent(value) {
+  return `${((Number(value) || 0) * 100).toFixed(1)}%`;
+}
+
+function renderEvaluationResults(payload) {
+  const summary = payload.summary || {};
+  $("#evaluation-summary").innerHTML = [
+    ["评测问题", summary.total ?? 0],
+    ["Recall@1", percent(summary.recall_at_1)],
+    ["Recall@3", percent(summary.recall_at_3)],
+    ["引用准确率", percent(summary.citation_accuracy)],
+    ["回答质量", percent(summary.answer_quality_rate)],
+  ].map(([label, value]) => `
+    <div class="evaluation-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `).join("");
+}
+
 function renderTrace(trace, title = "工作流追踪") {
   $("#trace").innerHTML = `
     <div class="trace-head">
@@ -77,7 +94,7 @@ function renderTrace(trace, title = "工作流追踪") {
     </div>
     ${trace.map((step, index) => `
       <div class="trace-item">
-        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} · ${step.duration_ms} ms</small></h3>
+        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} - ${step.duration_ms} ms</small></h3>
         <p>${escapeHtml(step.detail)}</p>
         <div class="trace-meta">
           <span>Prompt: ${escapeHtml(step.prompt)}</span>
@@ -103,9 +120,9 @@ function renderAuditHistory(audit) {
     return `
       <div class="audit-item ${isSelected ? "selected" : ""}">
         <div class="audit-item-main">
-          <strong>${escapeHtml(label)} · ${escapeHtml(event.user_id || currentUserId())}</strong>
+          <strong>${escapeHtml(label)} - ${escapeHtml(event.user_id || currentUserId())}</strong>
           <span>${escapeHtml(summary)}</span>
-          <small>${escapeHtml(event.duration_ms ?? 0)} ms · ${escapeHtml(event.step_count ?? 0)} steps</small>
+          <small>${escapeHtml(event.duration_ms ?? 0)} ms - ${escapeHtml(event.step_count ?? 0)} steps</small>
         </div>
         <div class="audit-item-actions">
           <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}">查看 trace</button>
@@ -120,7 +137,7 @@ function renderAuditHistory(audit) {
       const event = audit.find((item) => item.trace_id === traceId);
       if (!event || !event.workflow_trace) return;
       selectedTraceId = traceId || "";
-      renderTrace(event.workflow_trace, `${event.event} · ${traceId}`);
+      renderTrace(event.workflow_trace, `${event.event} - ${traceId}`);
       refreshAuditSelection();
     });
   });
@@ -133,11 +150,12 @@ function refreshAuditSelection() {
 }
 
 async function refreshOverview() {
-  const [health, me, documents, audit] = await Promise.all([
+  const [health, me, documents, audit, evaluation] = await Promise.all([
     fetch("/api/health").then((response) => response.json()),
     fetchJson("/api/me"),
     fetchJson("/api/documents"),
     fetchJson("/api/audit-log"),
+    fetchJson("/api/evaluation-results").catch(() => ({ summary: {} })),
   ]);
   $("#health").textContent = health.status === "ok" ? "Service healthy" : "Service error";
   $("#document-count").textContent = documents.length;
@@ -153,10 +171,11 @@ async function refreshOverview() {
       `).join("")
     : `<div class="document muted">${escapeHtml(me.display_name)} has no visible documents.</div>`;
   renderAuditHistory(audit);
+  renderEvaluationResults(evaluation);
   if (selectedTraceId) {
     const selected = audit.find((item) => item.trace_id === selectedTraceId);
     if (selected?.workflow_trace) {
-      renderTrace(selected.workflow_trace, `${selected.event} · ${selected.trace_id}`);
+      renderTrace(selected.workflow_trace, `${selected.event} - ${selected.trace_id}`);
       refreshAuditSelection();
     }
   }
@@ -181,7 +200,7 @@ function renderResult(payload) {
     </div>
   `).join("");
   selectedTraceId = "";
-  renderTrace(payload.workflow_trace, `Current trace · ${payload.trace_id}`);
+  renderTrace(payload.workflow_trace, `Current trace - ${payload.trace_id}`);
 }
 
 async function ask() {
@@ -203,7 +222,7 @@ async function ask() {
     alert(error.message);
   } finally {
     button.disabled = false;
-    button.textContent = "Run audit";
+    button.textContent = "运行审计";
   }
 }
 
@@ -269,7 +288,7 @@ $("#upload-form").addEventListener("submit", uploadDocument);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {
-  $("#question").value = "Can the legacy sales tool directly download the full customer list? Please explain conflicts and remediation.";
+  $("#question").value = "旧版销售工具是否可以直接下载完整客户名单？请指出它和当前制度的冲突，并给出整改建议。";
   ask();
 });
 $("#user-select").addEventListener("change", switchUser);
