@@ -9,5 +9,5 @@ reportlab==4.2.5
 python-docx==1.1.2
 openpyxl==3.1.5
 SQLAlchemy==2.0.51
-alembic==1.18.5
+alembic==1.16.5
 psycopg[binary]>=3.2,<4
