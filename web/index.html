@@ -15,7 +15,7 @@
       </div>
       <div class="header-tools">
         <label class="user-switcher" for="user-select">
-          <span>当前用户</span>
+          <span>User</span>
           <select id="user-select">
             <option value="local-demo">Local Demo</option>
             <option value="demo-alice">Alice</option>
@@ -28,7 +28,7 @@
     <main>
       <section class="workspace">
         <div class="question-panel">
-          <label for="question">向企业制度库提问</label>
+          <label for="question">向企业知识库提问</label>
           <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
           <div class="actions">
             <button id="ask">运行审计</button>
@@ -39,7 +39,7 @@
         <aside class="metrics">
           <div><span>已索引文档</span><strong id="document-count">-</strong></div>
           <div><span>当前用户</span><strong id="active-user">local-demo</strong></div>
-          <div><span>当前模式</span><strong id="mode">本地证据模式</strong></div>
+          <div><span>当前角色</span><strong id="active-role">owner</strong></div>
           <div><span>审计记录</span><strong id="audit-count">0</strong></div>
         </aside>
       </section>
@@ -48,12 +48,14 @@
         <div>
           <p class="panel-label">Document intake</p>
           <h2>上传制度文档</h2>
-          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。上传后会立即加入当前用户的检索索引。</p>
+          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。viewer 角色会自动禁用上传。</p>
         </div>
         <form id="upload-form" class="upload-form">
-          <label for="upload-title">文档标题</label>
+          <label for="knowledge-base-select">Knowledge base</label>
+          <select id="knowledge-base-select" name="knowledge_base_id"></select>
+          <label for="upload-title">Document title</label>
           <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="例如：客户数据导出补充规范" required />
-          <label for="upload-file">文档文件</label>
+          <label for="upload-file">Document file</label>
           <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
           <div class="actions">
             <button id="upload-button" type="submit">上传并入库</button>
@@ -110,11 +112,11 @@
       <section class="document-section">
         <div>
           <p class="panel-label">知识库内容</p>
-          <h2>当前用户可见文档</h2>
+          <h2>当前知识库可见文档</h2>
         </div>
         <div id="documents" class="document-list"></div>
       </section>
     </main>
-    <script src="/static/app.js?v=20260712-evaluation"></script>
+    <script src="/static/app.js?v=20260713-permissions"></script>
   </body>
 </html>

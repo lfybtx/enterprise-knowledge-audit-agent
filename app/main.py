@@ -25,6 +25,7 @@ UPLOAD_DIR = RUNTIME_DIR / "uploads"
 RUNTIME_DOCUMENTS_PATH = RUNTIME_DIR / "documents.json"
 DEFAULT_USER_ID = "local-demo"
 USER_HEADER = "X-User-Id"
+KNOWLEDGE_BASE_HEADER = "X-Knowledge-Base-Id"
 DEMO_USERS = {
     "local-demo": "Local Demo",
     "demo-alice": "Alice",
@@ -36,6 +37,28 @@ DEMO_USER_ROLES = {
     "demo-bob": "viewer",
 }
 WRITE_ROLES = {"owner", "editor"}
+DEMO_KNOWLEDGE_BASES = [
+    {"id": "kb-shared", "name": "Shared Compliance KB"},
+    {"id": "kb-alice", "name": "Alice Workspace"},
+    {"id": "kb-bob", "name": "Bob Review KB"},
+]
+DEMO_KNOWLEDGE_BASE_ROLES = {
+    "local-demo": {
+        "kb-shared": "owner",
+        "kb-alice": "editor",
+        "kb-bob": "viewer",
+    },
+    "demo-alice": {
+        "kb-shared": "editor",
+        "kb-alice": "owner",
+        "kb-bob": "viewer",
+    },
+    "demo-bob": {
+        "kb-shared": "viewer",
+        "kb-alice": "viewer",
+        "kb-bob": "viewer",
+    },
+}
 
 
 class DocumentCreate(BaseModel):
@@ -137,6 +160,19 @@ def require_write_access(user_external_id: str) -> None:
     role = DEMO_USER_ROLES.get(user_external_id)
     if role not in WRITE_ROLES:
         raise HTTPException(status_code=403, detail="Current user cannot write to this knowledge base")
+
+
+def knowledge_bases_for_user(user_external_id: str) -> list[dict[str, object]]:
+    roles = DEMO_KNOWLEDGE_BASE_ROLES[user_external_id]
+    return [
+        {
+            "id": knowledge_base["id"],
+            "name": knowledge_base["name"],
+            "role": roles[knowledge_base["id"]],
+            "can_write": roles[knowledge_base["id"]] in WRITE_ROLES,
+        }
+        for knowledge_base in DEMO_KNOWLEDGE_BASES
+    ]
 
 
 def user_documents(user_external_id: str) -> list[dict[str, Any]]:
@@ -353,6 +389,12 @@ def get_current_user(user_external_id: Optional[str] = Header(default=None, alia
         "display_name": DEMO_USERS[user_external_id],
         "role": DEMO_USER_ROLES[user_external_id],
     }
+
+
+@app.get("/api/knowledge-bases")
+def list_knowledge_bases(user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER)) -> list[dict[str, object]]:
+    user_external_id = require_user_id(user_external_id)
+    return knowledge_bases_for_user(user_external_id)
 
 
 @app.get("/api/documents")

@@ -107,6 +107,17 @@ def test_current_user_endpoint_reflects_user_header():
     assert response.json() == {"id": "demo-alice", "display_name": "Alice", "role": "editor"}
 
 
+def test_knowledge_bases_endpoint_returns_roles_for_current_user():
+    response = client.get("/api/knowledge-bases", headers={"X-User-Id": "demo-alice"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["id"] for item in payload] == ["kb-shared", "kb-alice", "kb-bob"]
+    assert payload[0]["role"] == "editor"
+    assert payload[1]["role"] == "owner"
+    assert payload[2]["can_write"] is False
+
+
 def test_audit_log_is_filtered_by_user_header():
     original_audit_log = list(main.audit_log)
     main.audit_log[:] = [

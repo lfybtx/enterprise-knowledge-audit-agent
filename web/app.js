@@ -8,6 +8,8 @@ const USERS = [
 
 let lastQuestion = "";
 let selectedTraceId = "";
+let selectedKnowledgeBaseId = "";
+let knowledgeBases = [];
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -28,21 +30,48 @@ function currentUserLabel() {
   return USERS.find((user) => user.id === currentUserId())?.label || currentUserId();
 }
 
-function authHeaders(extraHeaders = {}) {
-  return { ...extraHeaders, "X-User-Id": currentUserId() };
+function currentKnowledgeBase() {
+  return knowledgeBases.find((item) => item.id === selectedKnowledgeBaseId) || knowledgeBases[0] || null;
 }
 
-function saveCurrentUser() {
+function authHeaders(extraHeaders = {}) {
+  const headers = {
+    ...extraHeaders,
+    "X-User-Id": currentUserId(),
+  };
+  if (selectedKnowledgeBaseId) {
+    headers["X-Knowledge-Base-Id"] = selectedKnowledgeBaseId;
+  }
+  return headers;
+}
+
+function savePreferences() {
   localStorage.setItem("audit-agent-user-id", currentUserId());
+  localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);
   $("#active-user").textContent = currentUserLabel();
 }
 
-function restoreCurrentUser() {
+function restorePreferences() {
   const storedUser = localStorage.getItem("audit-agent-user-id");
   if (USERS.some((user) => user.id === storedUser)) {
     $("#user-select").value = storedUser;
   }
-  saveCurrentUser();
+  selectedKnowledgeBaseId = localStorage.getItem("audit-agent-kb-id") || "";
+  savePreferences();
+}
+
+function setUploadEnabled(enabled) {
+  $("#upload-button").disabled = !enabled;
+  $("#upload-title").disabled = !enabled;
+  $("#upload-file").disabled = !enabled;
+}
+
+function applyPermissions() {
+  const kb = currentKnowledgeBase();
+  const canWrite = Boolean(kb?.can_write);
+  $("#active-role").textContent = kb?.role || "-";
+  $("#upload-status").textContent = canWrite ? "" : "This role cannot upload documents.";
+  setUploadEnabled(canWrite);
 }
 
 function clearResult() {
@@ -69,6 +98,21 @@ async function fetchJson(url, options = {}) {
 
 function percent(value) {
   return `${((Number(value) || 0) * 100).toFixed(1)}%`;
+}
+
+function renderKnowledgeBaseOptions(items) {
+  knowledgeBases = items || [];
+  const select = $("#knowledge-base-select");
+  const previous = selectedKnowledgeBaseId;
+  select.innerHTML = knowledgeBases.map((item) => `
+    <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(item.role)})</option>
+  `).join("");
+  if (previous && knowledgeBases.some((item) => item.id === previous)) {
+    selectedKnowledgeBaseId = previous;
+  } else {
+    selectedKnowledgeBaseId = knowledgeBases[0]?.id || "";
+  }
+  select.value = selectedKnowledgeBaseId;
 }
 
 function renderEvaluationResults(payload) {
@@ -150,18 +194,22 @@ function refreshAuditSelection() {
 }
 
 async function refreshOverview() {
-  const [health, me, documents, audit, evaluation] = await Promise.all([
+  const [health, me, documents, audit, evaluation, kbList] = await Promise.all([
     fetch("/api/health").then((response) => response.json()),
     fetchJson("/api/me"),
     fetchJson("/api/documents"),
     fetchJson("/api/audit-log"),
     fetchJson("/api/evaluation-results").catch(() => ({ summary: {} })),
+    fetchJson("/api/knowledge-bases"),
   ]);
   $("#health").textContent = health.status === "ok" ? "Service healthy" : "Service error";
   $("#document-count").textContent = documents.length;
   $("#active-user").textContent = `${me.display_name} (${me.id})`;
-  $("#mode").textContent = health.llm_enabled ? "LLM + evidence" : "Local evidence mode";
   $("#audit-count").textContent = audit.length;
+  renderKnowledgeBaseOptions(kbList);
+  $("#knowledge-base-select").value = selectedKnowledgeBaseId || knowledgeBases[0]?.id || "";
+  selectedKnowledgeBaseId = $("#knowledge-base-select").value;
+  applyPermissions();
   $("#documents").innerHTML = documents.length
     ? documents.map((document) => `
         <div class="document">
@@ -254,6 +302,10 @@ async function exportReport(exportFormat) {
 
 async function uploadDocument(event) {
   event.preventDefault();
+  if (!currentKnowledgeBase()?.can_write) {
+    $("#upload-status").textContent = "This role cannot upload documents.";
+    return;
+  }
   const form = $("#upload-form");
   const button = $("#upload-button");
   const status = $("#upload-status");
@@ -268,6 +320,7 @@ async function uploadDocument(event) {
       body: new FormData(form),
     });
     form.reset();
+    form.querySelector("#knowledge-base-select").value = selectedKnowledgeBaseId;
     status.textContent = `Uploaded for ${currentUserLabel()}`;
     await refreshOverview();
   } catch (error) {
@@ -278,8 +331,15 @@ async function uploadDocument(event) {
 }
 
 async function switchUser() {
-  saveCurrentUser();
+  savePreferences();
   clearResult();
+  await refreshOverview();
+}
+
+async function switchKnowledgeBase() {
+  selectedKnowledgeBaseId = $("#knowledge-base-select").value;
+  savePreferences();
+  applyPermissions();
   await refreshOverview();
 }
 
@@ -292,6 +352,7 @@ $("#example").addEventListener("click", () => {
   ask();
 });
 $("#user-select").addEventListener("change", switchUser);
+$("#knowledge-base-select").addEventListener("change", switchKnowledgeBase);
 
-restoreCurrentUser();
+restorePreferences();
 refreshOverview();
