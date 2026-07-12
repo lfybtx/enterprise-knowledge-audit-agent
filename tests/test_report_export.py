@@ -69,6 +69,7 @@ def test_export_report_pdf_is_readable():
 def test_export_api_returns_attachment():
     response = client.post(
         "/api/reports/export",
+        headers={"X-User-Id": "local-demo"},
         json={"question": "Can customer data be exported?", "export_format": "markdown"},
     )
 

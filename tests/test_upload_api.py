@@ -8,10 +8,24 @@ client = TestClient(main.app)
 
 
 def test_list_documents_returns_numeric_chunk_count():
-    response = client.get("/api/documents")
+    response = client.get("/api/documents", headers={"X-User-Id": "local-demo"})
 
     assert response.status_code == 200
     assert all(isinstance(document["chunk_count"], int) for document in response.json())
+
+
+def test_protected_endpoints_require_user_header():
+    response = client.get("/api/documents")
+
+    assert response.status_code == 401
+    assert "X-User-Id" in response.json()["detail"]
+
+
+def test_unknown_user_is_rejected():
+    response = client.get("/api/me", headers={"X-User-Id": "unknown-user"})
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Unknown user"
 
 
 def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
@@ -25,6 +39,7 @@ def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
 
     response = client.post(
         "/api/documents/upload",
+        headers={"X-User-Id": "local-demo"},
         data={"title": "客户名单导出补充规范"},
         files={
             "file": (
@@ -89,7 +104,7 @@ def test_current_user_endpoint_reflects_user_header():
     response = client.get("/api/me", headers={"X-User-Id": "demo-alice"})
 
     assert response.status_code == 200
-    assert response.json() == {"id": "demo-alice", "display_name": "Alice"}
+    assert response.json() == {"id": "demo-alice", "display_name": "Alice", "role": "editor"}
 
 
 def test_audit_log_is_filtered_by_user_header():
@@ -107,9 +122,34 @@ def test_audit_log_is_filtered_by_user_header():
 
         assert alice_response.json() == [{"event": "question_answered", "user_id": "demo-alice"}]
         assert bob_response.json() == [{"event": "question_answered", "user_id": "demo-bob"}]
-        assert local_response.json() == [{"event": "legacy_event_without_user"}]
+        assert local_response.status_code == 401
     finally:
         main.audit_log[:] = original_audit_log
+
+
+def test_viewer_cannot_create_or_upload_documents(tmp_path, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path / "uploads")
+    monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
+
+    create_response = client.post(
+        "/api/documents",
+        headers={"X-User-Id": "demo-bob"},
+        json={
+            "title": "Bob read-only policy",
+            "source": "bob.txt",
+            "content": "Bob should not be able to create this document in viewer mode.",
+        },
+    )
+    upload_response = client.post(
+        "/api/documents/upload",
+        headers={"X-User-Id": "demo-bob"},
+        data={"title": "Bob upload"},
+        files={"file": ("bob.txt", "Viewer users cannot upload documents.", "text/plain")},
+    )
+
+    assert create_response.status_code == 403
+    assert upload_response.status_code == 403
 
 
 def test_persist_audit_event_includes_workflow_trace():

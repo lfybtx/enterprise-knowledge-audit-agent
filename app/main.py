@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 from uuid import uuid4
 
 from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -30,6 +30,12 @@ DEMO_USERS = {
     "demo-alice": "Alice",
     "demo-bob": "Bob",
 }
+DEMO_USER_ROLES = {
+    "local-demo": "owner",
+    "demo-alice": "editor",
+    "demo-bob": "viewer",
+}
+WRITE_ROLES = {"owner", "editor"}
 
 
 class DocumentCreate(BaseModel):
@@ -116,6 +122,21 @@ def document_visible_to_user(document: dict[str, Any], user_external_id: str) ->
 
 def normalize_user_id(user_external_id: str | None) -> str:
     return (user_external_id or DEFAULT_USER_ID).strip() or DEFAULT_USER_ID
+
+
+def require_user_id(user_external_id: str | None) -> str:
+    normalized = (user_external_id or "").strip()
+    if not normalized:
+        raise HTTPException(status_code=401, detail=f"Missing {USER_HEADER} header")
+    if normalized not in DEMO_USERS:
+        raise HTTPException(status_code=401, detail="Unknown user")
+    return normalized
+
+
+def require_write_access(user_external_id: str) -> None:
+    role = DEMO_USER_ROLES.get(user_external_id)
+    if role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Current user cannot write to this knowledge base")
 
 
 def user_documents(user_external_id: str) -> list[dict[str, Any]]:
@@ -325,14 +346,18 @@ def health() -> dict[str, object]:
 
 
 @app.get("/api/me")
-def get_current_user(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> dict[str, str]:
-    user_external_id = normalize_user_id(user_external_id)
-    return {"id": user_external_id, "display_name": DEMO_USERS.get(user_external_id, user_external_id)}
+def get_current_user(user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER)) -> dict[str, str]:
+    user_external_id = require_user_id(user_external_id)
+    return {
+        "id": user_external_id,
+        "display_name": DEMO_USERS[user_external_id],
+        "role": DEMO_USER_ROLES[user_external_id],
+    }
 
 
 @app.get("/api/documents")
-def list_documents(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, Any]]:
-    user_external_id = normalize_user_id(user_external_id)
+def list_documents(user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER)) -> list[dict[str, Any]]:
+    user_external_id = require_user_id(user_external_id)
     persisted_summaries = load_persisted_document_summaries(user_external_id)
     if persisted_summaries is not None:
         return seed_document_summaries(user_external_id) + persisted_summaries
@@ -342,9 +367,10 @@ def list_documents(user_external_id: str = Header(default=DEFAULT_USER_ID, alias
 @app.post("/api/documents", status_code=201)
 def create_document(
     payload: DocumentCreate,
-    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> dict[str, str]:
-    user_external_id = normalize_user_id(user_external_id)
+    user_external_id = require_user_id(user_external_id)
+    require_write_access(user_external_id)
     document_id = str(uuid4())
     document = {
         "id": document_id,
@@ -365,9 +391,10 @@ def create_document(
 async def upload_document(
     title: str = Form(..., min_length=2, max_length=120),
     file: UploadFile = File(...),
-    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> dict[str, str]:
-    user_external_id = normalize_user_id(user_external_id)
+    user_external_id = require_user_id(user_external_id)
+    require_write_access(user_external_id)
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
     try:
@@ -412,9 +439,9 @@ async def upload_document(
 @app.post("/api/ask")
 def ask(
     payload: QuestionRequest,
-    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> dict[str, object]:
-    user_external_id = normalize_user_id(user_external_id)
+    user_external_id = require_user_id(user_external_id)
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
@@ -423,8 +450,8 @@ def ask(
 
 
 @app.get("/api/audit-log")
-def get_audit_log(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, object]]:
-    user_external_id = normalize_user_id(user_external_id)
+def get_audit_log(user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER)) -> list[dict[str, object]]:
+    user_external_id = require_user_id(user_external_id)
     persisted_audit_log = load_persisted_audit_log(user_external_id)
     if persisted_audit_log is not None:
         return persisted_audit_log
@@ -444,9 +471,9 @@ def get_evaluation_results() -> dict[str, object]:
 @app.post("/api/evaluate")
 def evaluate(
     cases: list[EvaluationCase],
-    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> dict[str, object]:
-    user_external_id = normalize_user_id(user_external_id)
+    user_external_id = require_user_id(user_external_id)
     if not cases:
         raise HTTPException(status_code=400, detail="At least one evaluation case is required")
     outcomes = []
@@ -468,9 +495,9 @@ def evaluate(
 @app.post("/api/reports/export")
 def export_audit_report(
     payload: ReportExportRequest,
-    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> Response:
-    user_external_id = normalize_user_id(user_external_id)
+    user_external_id = require_user_id(user_external_id)
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
