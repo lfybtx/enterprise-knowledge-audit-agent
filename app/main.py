@@ -11,10 +11,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from app.services.audit import assess
 from app.services.chunking import build_chunks
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
 from app.services.retrieval import HybridRetriever, grounded_answer
+from app.services.workflow import run_audit_workflow
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -240,45 +240,18 @@ async def upload_document(
 
 @app.post("/api/ask")
 def ask(payload: QuestionRequest) -> dict[str, object]:
-    evidence = search_evidence(payload.question)
-    if not evidence:
+    response = run_audit_workflow(payload.question, search_evidence)
+    if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
-
-    findings = assess(payload.question, evidence)
     audit_log.append(
         {
             "event": "question_answered",
             "question": payload.question,
-            "evidence_ids": [item.document_id for item in evidence],
-            "risk_levels": [item.level for item in findings],
+            "evidence_ids": [item["document_id"] for item in response["citations"]],
+            "risk_levels": [item["level"] for item in response["findings"]],
         }
     )
-    return {
-        "answer": grounded_answer(payload.question, evidence),
-        "citations": [
-            {
-                "document_id": item.document_id,
-                "chunk_id": item.chunk_id,
-                "title": item.title,
-                "source": item.source,
-                "location": item.location,
-                "location_label": item.location_label,
-                "excerpt": item.text,
-                "score": item.score,
-            }
-            for item in evidence
-        ],
-        "findings": [
-            {
-                "level": item.level,
-                "title": item.title,
-                "rationale": item.rationale,
-                "recommendation": item.recommendation,
-                "evidence_ids": item.evidence_ids,
-            }
-            for item in findings
-        ],
-    }
+    return response
 
 
 @app.get("/api/audit-log")

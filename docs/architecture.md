@@ -8,13 +8,12 @@ flowchart LR
     P --> E["Embedding service"]
     E --> D["PostgreSQL + pgvector"]
     P --> D
-    A --> R["Hybrid retriever<br/>keyword + pgvector"]
+    A --> R["Retrieval agent<br/>keyword + pgvector"]
     R --> D
     R --> K["Knowledge chunks"]
-    A --> G["Evidence-only answer generator"]
-    A --> C["Policy conflict rules"]
-    G --> O["Answer with citations"]
-    C --> O
+    A --> C["Audit agent<br/>policy rules"]
+    C --> G["Report agent<br/>structured output"]
+    G --> O["Answer, citations, report"]
     A --> L["Audit log"]
 ```
 
