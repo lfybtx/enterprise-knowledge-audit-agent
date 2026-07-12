@@ -70,7 +70,7 @@ The included baseline currently reports:
 | Citation accuracy | 98.0% |
 | Answer quality pass rate | 100.0% |
 
-The script writes the detailed run to `data/evaluation_results.json`.
+The script writes the detailed run to `data/evaluation_results.json` and a GitHub-readable report to [`docs/evaluation-report.md`](docs/evaluation-report.md).
 
 ## API
 

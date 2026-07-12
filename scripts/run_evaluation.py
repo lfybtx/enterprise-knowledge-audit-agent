@@ -15,6 +15,7 @@ from app.services.retrieval import HybridRetriever, grounded_answer  # noqa: E40
 
 DEFAULT_CASES_PATH = ROOT / "data" / "evaluation_cases.json"
 DEFAULT_RESULTS_PATH = ROOT / "data" / "evaluation_results.json"
+DEFAULT_REPORT_PATH = ROOT / "docs" / "evaluation-report.md"
 
 
 def load_json(path: Path) -> Any:
@@ -110,14 +111,57 @@ def print_report(payload: dict[str, Any], results_path: Path) -> None:
             )
 
 
+def render_markdown_report(payload: dict[str, Any], results_path: Path, cases_path: Path) -> str:
+    summary = payload["summary"]
+    failures = [item for item in payload["outcomes"] if not item["recall_at_1"]]
+    display_results_path = results_path.resolve().relative_to(ROOT) if results_path.resolve().is_relative_to(ROOT) else results_path
+    display_cases_path = cases_path.resolve().relative_to(ROOT) if cases_path.resolve().is_relative_to(ROOT) else cases_path
+    lines = [
+        "# Evaluation Report",
+        "",
+        f"- Cases file: `{display_cases_path.as_posix()}`",
+        f"- Results file: `{display_results_path.as_posix()}`",
+        f"- Total cases: {summary['total']}",
+        f"- Recall@1: {summary['recall_at_1']:.1%}",
+        f"- Recall@3: {summary['recall_at_3']:.1%}",
+        f"- Citation accuracy: {summary['citation_accuracy']:.1%}",
+        f"- Answer quality pass rate: {summary['answer_quality_rate']:.1%}",
+        "",
+        "## Top Recall@1 failures",
+    ]
+    if failures:
+        for item in failures[:10]:
+            lines.append(
+                f"- `{item['id']}` expected `{item['expected_document_id']}` "
+                f"but retrieved `{item['top_document_id']}`"
+            )
+    else:
+        lines.append("- None")
+    lines.extend(
+        [
+            "",
+            "## Method",
+            "- `Recall@1` checks whether the top result matches the expected document.",
+            "- `Recall@3` checks whether the expected document appears in the top three results.",
+            "- `Citation accuracy` checks whether the top result also matches the expected location kind.",
+            "- `Answer quality` checks whether the grounded answer contains evidence markers and does not fall back to the no-evidence path.",
+        ]
+    )
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run retrieval, citation, and answer-quality evaluation.")
     parser.add_argument("--cases", type=Path, default=DEFAULT_CASES_PATH)
     parser.add_argument("--output", type=Path, default=DEFAULT_RESULTS_PATH)
+    parser.add_argument("--report", type=Path, default=DEFAULT_REPORT_PATH)
     args = parser.parse_args()
 
     payload = run_evaluation(args.cases, args.output)
     print_report(payload, args.output)
+    args.report.parent.mkdir(parents=True, exist_ok=True)
+    args.report.write_text(render_markdown_report(payload, args.output, args.cases), encoding="utf-8")
+    print(f"- Markdown report: {args.report}")
 
 
 if __name__ == "__main__":
