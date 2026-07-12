@@ -56,6 +56,12 @@ docker compose run --rm app pytest -q
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
+普通本地页面调试、上传解析、报告导出不需要数据库驱动。如果要在宿主机直接执行 Alembic 或连接 PostgreSQL，再安装：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-db.txt
+```
+
 ## 执行迁移
 
 数据库容器启动后，执行：

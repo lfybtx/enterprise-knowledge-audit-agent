@@ -65,10 +65,13 @@ def load_documents() -> list[dict[str, Any]]:
 def load_persisted_documents() -> list[dict[str, Any]] | None:
     if not os.getenv("DATABASE_URL"):
         return None
-    from app.db import get_session_factory
-    from app.repositories.knowledge_repository import database_is_ready, load_document_records
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import database_is_ready, load_document_records
 
-    session = get_session_factory()()
+        session = get_session_factory()()
+    except Exception:
+        return None
     try:
         if not database_is_ready(session):
             return None
@@ -103,16 +106,19 @@ def add_document(document: dict[str, Any]) -> None:
 def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
     """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
     if os.getenv("DATABASE_URL"):
-        from app.db import get_session_factory
-        from app.repositories.knowledge_repository import (
-            DatabaseUnavailableError,
-            database_is_ready,
-            persist_document,
-        )
-
-        session = get_session_factory()()
         try:
-            if database_is_ready(session):
+            from app.db import get_session_factory
+            from app.repositories.knowledge_repository import (
+                DatabaseUnavailableError,
+                database_is_ready,
+                persist_document,
+            )
+
+            session = get_session_factory()()
+        except Exception:
+            session = None
+        try:
+            if session is not None and database_is_ready(session):
                 try:
                     persisted_document = persist_document(
                         session,
@@ -126,7 +132,8 @@ def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
                 except DatabaseUnavailableError:
                     pass
         finally:
-            session.close()
+            if session is not None:
+                session.close()
 
     save_runtime_document(document)
     return document
@@ -134,12 +141,15 @@ def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
 
 def search_evidence(question: str):
     if os.getenv("DATABASE_URL"):
-        from app.db import get_session_factory
-        from app.repositories.knowledge_repository import DatabaseUnavailableError, database_is_ready, hybrid_search_chunks
-
-        session = get_session_factory()()
         try:
-            if database_is_ready(session):
+            from app.db import get_session_factory
+            from app.repositories.knowledge_repository import DatabaseUnavailableError, database_is_ready, hybrid_search_chunks
+
+            session = get_session_factory()()
+        except Exception:
+            session = None
+        try:
+            if session is not None and database_is_ready(session):
                 try:
                     persisted_hits = hybrid_search_chunks(session, question)
                     if persisted_hits:
@@ -147,7 +157,8 @@ def search_evidence(question: str):
                 except DatabaseUnavailableError:
                     pass
         finally:
-            session.close()
+            if session is not None:
+                session.close()
     return retriever.search(question)
 
 
