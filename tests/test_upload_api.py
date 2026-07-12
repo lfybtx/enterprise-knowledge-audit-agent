@@ -83,3 +83,30 @@ def test_runtime_documents_are_isolated_by_user_header(tmp_path, monkeypatch):
     finally:
         main.documents[:] = original_documents
         main.retriever = original_retriever
+
+
+def test_current_user_endpoint_reflects_user_header():
+    response = client.get("/api/me", headers={"X-User-Id": "demo-alice"})
+
+    assert response.status_code == 200
+    assert response.json() == {"id": "demo-alice", "display_name": "Alice"}
+
+
+def test_audit_log_is_filtered_by_user_header():
+    original_audit_log = list(main.audit_log)
+    main.audit_log[:] = [
+        {"event": "question_answered", "user_id": "demo-alice"},
+        {"event": "question_answered", "user_id": "demo-bob"},
+        {"event": "legacy_event_without_user"},
+    ]
+
+    try:
+        alice_response = client.get("/api/audit-log", headers={"X-User-Id": "demo-alice"})
+        bob_response = client.get("/api/audit-log", headers={"X-User-Id": "demo-bob"})
+        local_response = client.get("/api/audit-log")
+
+        assert alice_response.json() == [{"event": "question_answered", "user_id": "demo-alice"}]
+        assert bob_response.json() == [{"event": "question_answered", "user_id": "demo-bob"}]
+        assert local_response.json() == [{"event": "legacy_event_without_user"}]
+    finally:
+        main.audit_log[:] = original_audit_log

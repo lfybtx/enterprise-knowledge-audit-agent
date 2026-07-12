@@ -68,14 +68,15 @@ async function fetchJson(url, options = {}) {
 }
 
 async function refreshOverview() {
-  const [health, documents, audit] = await Promise.all([
+  const [health, me, documents, audit] = await Promise.all([
     fetch("/api/health").then((response) => response.json()),
+    fetchJson("/api/me"),
     fetchJson("/api/documents"),
     fetchJson("/api/audit-log"),
   ]);
   $("#health").textContent = health.status === "ok" ? "Service healthy" : "Service error";
   $("#document-count").textContent = documents.length;
-  $("#active-user").textContent = currentUserLabel();
+  $("#active-user").textContent = `${me.display_name} (${me.id})`;
   $("#mode").textContent = health.llm_enabled ? "LLM + evidence" : "Local evidence mode";
   $("#audit-count").textContent = audit.length;
   $("#documents").innerHTML = documents.length
@@ -85,7 +86,7 @@ async function refreshOverview() {
           <span>${escapeHtml(document.source)} - ${document.chunk_count} chunks</span>
         </div>
       `).join("")
-    : '<div class="document muted">当前用户还没有可见文档。</div>';
+    : `<div class="document muted">${escapeHtml(me.display_name)} has no visible documents.</div>`;
 }
 
 function renderResult(payload) {

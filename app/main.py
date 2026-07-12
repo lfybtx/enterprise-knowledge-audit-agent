@@ -25,6 +25,11 @@ UPLOAD_DIR = RUNTIME_DIR / "uploads"
 RUNTIME_DOCUMENTS_PATH = RUNTIME_DIR / "documents.json"
 DEFAULT_USER_ID = "local-demo"
 USER_HEADER = "X-User-Id"
+DEMO_USERS = {
+    "local-demo": "Local Demo",
+    "demo-alice": "Alice",
+    "demo-bob": "Bob",
+}
 
 
 class DocumentCreate(BaseModel):
@@ -107,6 +112,10 @@ def add_document(document: dict[str, Any]) -> None:
 
 def document_visible_to_user(document: dict[str, Any], user_external_id: str) -> bool:
     return document.get("owner_id", DEFAULT_USER_ID) == user_external_id
+
+
+def normalize_user_id(user_external_id: str | None) -> str:
+    return (user_external_id or DEFAULT_USER_ID).strip() or DEFAULT_USER_ID
 
 
 def user_documents(user_external_id: str) -> list[dict[str, Any]]:
@@ -230,9 +239,15 @@ def health() -> dict[str, object]:
     return {"status": "ok", "document_count": len(documents), "llm_enabled": bool(os.getenv("OPENAI_API_KEY"))}
 
 
+@app.get("/api/me")
+def get_current_user(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> dict[str, str]:
+    user_external_id = normalize_user_id(user_external_id)
+    return {"id": user_external_id, "display_name": DEMO_USERS.get(user_external_id, user_external_id)}
+
+
 @app.get("/api/documents")
 def list_documents(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, Any]]:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     persisted_summaries = load_persisted_document_summaries(user_external_id)
     if persisted_summaries is not None:
         return seed_document_summaries(user_external_id) + persisted_summaries
@@ -244,7 +259,7 @@ def create_document(
     payload: DocumentCreate,
     user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> dict[str, str]:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     document_id = str(uuid4())
     document = {
         "id": document_id,
@@ -267,7 +282,7 @@ async def upload_document(
     file: UploadFile = File(...),
     user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> dict[str, str]:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
     try:
@@ -314,7 +329,7 @@ def ask(
     payload: QuestionRequest,
     user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> dict[str, object]:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
@@ -331,8 +346,10 @@ def ask(
 
 
 @app.get("/api/audit-log")
-def get_audit_log() -> list[dict[str, object]]:
-    return audit_log[-50:]
+def get_audit_log(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, object]]:
+    user_external_id = normalize_user_id(user_external_id)
+    visible_events = [event for event in audit_log if event.get("user_id", DEFAULT_USER_ID) == user_external_id]
+    return visible_events[-50:]
 
 
 @app.post("/api/evaluate")
@@ -340,7 +357,7 @@ def evaluate(
     cases: list[EvaluationCase],
     user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> dict[str, object]:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     if not cases:
         raise HTTPException(status_code=400, detail="At least one evaluation case is required")
     outcomes = []
@@ -364,7 +381,7 @@ def export_audit_report(
     payload: ReportExportRequest,
     user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> Response:
-    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    user_external_id = normalize_user_id(user_external_id)
     response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
