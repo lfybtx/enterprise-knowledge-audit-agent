@@ -21,3 +21,8 @@ def test_document_chunk_has_unique_document_index_constraint():
         and {column.name for column in constraint.columns} == {"document_id", "chunk_index"}
         for constraint in constraints
     )
+
+
+def test_document_chunk_has_vector_embedding_column():
+    assert "embedding" in DocumentChunk.__table__.columns
+    assert DocumentChunk.__table__.columns["embedding"].type.get_col_spec() == "vector(64)"

@@ -8,6 +8,7 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
+from app.vector_types import EMBEDDING_DIMENSIONS, Vector
 
 
 class KnowledgeBase(Base):
@@ -48,6 +49,7 @@ class DocumentChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     location: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(EMBEDDING_DIMENSIONS), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     document: Mapped[KnowledgeDocument] = relationship(back_populates="chunks")

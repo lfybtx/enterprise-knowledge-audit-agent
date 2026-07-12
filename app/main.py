@@ -126,6 +126,25 @@ def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
+def search_evidence(question: str):
+    if os.getenv("DATABASE_URL"):
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import DatabaseUnavailableError, database_is_ready, hybrid_search_chunks
+
+        session = get_session_factory()()
+        try:
+            if database_is_ready(session):
+                try:
+                    persisted_hits = hybrid_search_chunks(session, question)
+                    if persisted_hits:
+                        return persisted_hits
+                except DatabaseUnavailableError:
+                    pass
+        finally:
+            session.close()
+    return retriever.search(question)
+
+
 documents = load_documents()
 retriever = HybridRetriever(documents)
 audit_log: list[dict[str, object]] = []
@@ -221,7 +240,7 @@ async def upload_document(
 
 @app.post("/api/ask")
 def ask(payload: QuestionRequest) -> dict[str, object]:
-    evidence = retriever.search(payload.question)
+    evidence = search_evidence(payload.question)
     if not evidence:
         raise HTTPException(status_code=404, detail="No searchable evidence")
 

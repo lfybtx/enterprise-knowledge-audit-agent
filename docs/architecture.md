@@ -5,7 +5,11 @@ flowchart LR
     U["Business user"] --> W["Web UI"]
     W --> A["FastAPI API"]
     A --> P["Parser + chunker<br/>page/table/sheet metadata"]
-    P --> R["Hybrid retriever<br/>BM25-like + cosine"]
+    P --> E["Embedding service"]
+    E --> D["PostgreSQL + pgvector"]
+    P --> D
+    A --> R["Hybrid retriever<br/>keyword + pgvector"]
+    R --> D
     R --> K["Knowledge chunks"]
     A --> G["Evidence-only answer generator"]
     A --> C["Policy conflict rules"]
