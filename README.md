@@ -1,31 +1,49 @@
 # Enterprise Knowledge Audit Agent
 
-一个面向企业制度、合同、销售规范等非结构化文档的可审计知识库 Agent。它不只回答问题，还会给出证据引用、风险发现和整改建议。
+An auditable knowledge-base Agent for enterprise policies, contracts, sales playbooks, and compliance documents. It answers questions with source evidence, identifies policy conflicts, produces risk findings, and records workflow traces.
 
 ![Project interface](docs/screenshot-placeholder.png)
 
-> 截图在完成本地运行后生成。该项目可在没有 API Key 的情况下运行：默认使用本地混合检索和基于证据的回答，避免把无依据内容包装成结论。
+> The preview image can be regenerated with `python scripts/make_readme_screenshot.py`. The app runs without an API key by using local hybrid retrieval and evidence-grounded answers.
 
-## Why this project
+## Why This Project
 
-- **Grounded answers**: every answer is derived from retrieved source sentences.
-- **Audit layer**: detects risky data export requests and historical-policy conflicts.
-- **Evaluation**: includes a reproducible Recall@1 dataset and script.
-- **Deployable**: exposes a web UI and JSON API, with Docker Compose configuration.
+- **Grounded answers**: every answer is derived from retrieved source chunks.
+- **Hybrid retrieval**: combines lexical matching and local vector scoring.
+- **Precise citations**: keeps page, paragraph, table, sheet, row, or line metadata.
+- **Audit workflow**: separates retrieval, audit analysis, and report generation.
+- **Evaluation**: includes 50 labeled cases with reproducible metrics.
+- **Observability**: records prompts, tool calls, duration, token estimates, status, and failures.
+- **Access control**: demo users only see their own uploaded knowledge base content.
+- **Deployable**: includes FastAPI, PostgreSQL/pgvector migrations, Docker Compose, and tests.
+
+## Current Baseline
+
+| Metric | Result |
+| --- | --- |
+| Cases | 50 |
+| Recall@1 | 98.0% |
+| Recall@3 | 100.0% |
+| Citation accuracy | 98.0% |
+| Answer quality pass rate | 100.0% |
+
+Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 
 ## Features
 
 | Capability | Implementation |
 | --- | --- |
-| Hybrid retrieval | BM25-like lexical score + cosine score over local terms |
-| Citation | Source title, path, excerpt, retrieval score, and page/table/sheet location |
-| Risk audit | Data export, incident response, and legacy-document conflict rules |
-| Evaluation | 50 labeled cases with Recall@1/3, citation accuracy, and answer-quality metrics |
-| Audit trail | In-memory request/ingestion event log |
-| Upload | `.txt`、文本型 PDF、`.docx`、`.xlsx` 上传、解析、本地存储和立即索引 |
-| Deployment | Dockerfile and Docker Compose |
+| Upload and parsing | `.txt`, text-based PDF, `.docx`, `.xlsx` |
+| Chunking | Source-aware chunks with location metadata |
+| Retrieval | Keyword score + local vector cosine score; PostgreSQL path supports pgvector |
+| Citations | Title, source path, excerpt, score, and location label |
+| Audit findings | Sensitive export risk, incident response, and legacy-policy conflicts |
+| Report export | JSON, Markdown, and Unicode-capable PDF |
+| Audit history | Workflow traces persisted in PostgreSQL when Docker stack is used |
+| Permissions | `X-User-Id` scoped document visibility |
+| Evaluation | 50 cases, JSON results, Markdown report, and UI baseline panel |
 
-## Run locally
+## Run Locally
 
 Requires Python 3.9+.
 
@@ -38,99 +56,114 @@ uvicorn app.main:app --reload
 
 Open `http://127.0.0.1:8000`.
 
-> Windows 新手环境说明：这里使用普通 `uvicorn`，不使用 `uvicorn[standard]`，避免在 32 位 Python 或未安装 C++ Build Tools 的机器上编译 `httptools` 失败。
-
-普通本地调试只需要 `requirements.txt`。如果你要在宿主机直接连接 PostgreSQL 或执行 Alembic 迁移，再额外安装数据库依赖：
+For direct host-side PostgreSQL or Alembic work, install the optional database dependencies:
 
 ```bash
 python -m pip install -r requirements-db.txt
 ```
 
-## Run with Docker
+## Run With Docker
 
 ```bash
 copy .env.example .env
 docker compose up --build
 ```
 
-## Test and evaluate
+Docker Compose starts the app and PostgreSQL with pgvector enabled. Uploaded documents and workflow traces are persisted in PostgreSQL when `DATABASE_URL` is configured.
+
+## Test And Evaluate
 
 ```bash
 pytest
 python scripts/run_evaluation.py
 ```
 
-The included baseline currently reports:
+The evaluation script writes:
 
-| Metric | Result |
-| --- | --- |
-| Cases | 50 |
-| Recall@1 | 98.0% |
-| Recall@3 | 100.0% |
-| Citation accuracy | 98.0% |
-| Answer quality pass rate | 100.0% |
+- `data/evaluation_results.json`
+- `docs/evaluation-report.md`
 
-The script writes the detailed run to `data/evaluation_results.json` and a GitHub-readable report to [`docs/evaluation-report.md`](docs/evaluation-report.md).
+The README preview image can be regenerated with:
 
-## API
+```bash
+python scripts/make_readme_screenshot.py
+```
 
-### Ask a question
+## API Examples
+
+Ask a question:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/api/ask ^
   -H "Content-Type: application/json" ^
-  -d "{\"question\":\"销售是否可以直接导出完整客户名单？\"}"
+  -H "X-User-Id: demo-alice" ^
+  -d "{\"question\":\"Can the legacy sales tool directly download the full customer list?\"}"
 ```
 
-### Ingest a document
-
-```bash
-curl -X POST http://127.0.0.1:8000/api/documents ^
-  -H "Content-Type: application/json" ^
-  -d "{\"title\":\"示例制度\",\"source\":\"demo.pdf\",\"content\":\"这是一份至少二十字的示例制度文本，用于验证新文档可以被索引和检索。\"}"
-```
-
-### Upload a document
-
-Use the homepage upload form, or send multipart form data to:
+Upload a document:
 
 ```http
 POST /api/documents/upload
 ```
 
-Fields:
+Multipart fields:
 
 - `title`: document title
-- `file`: `.txt`、文本型 `.pdf`、`.docx` 或 `.xlsx`
+- `file`: `.txt`, text-based `.pdf`, `.docx`, or `.xlsx`
 
-PDF 当前支持带文本层的文件。扫描件在完成 OCR 之前无法提供可靠引用，接口会明确拒绝空文本。
-
-Uploaded files are indexed as chunks. PDF chunks keep page numbers, Word chunks keep paragraph/table positions, Excel chunks keep worksheet and row positions, and TXT chunks keep line numbers.
+PDF support currently targets files with an embedded text layer. Scanned PDFs should go through OCR before upload.
 
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md).
 
-## Lessons
+```mermaid
+flowchart LR
+    U["Business user"] --> W["Web UI"]
+    W --> A["FastAPI API"]
+    A --> P["Parser + chunker"]
+    P --> D["PostgreSQL + pgvector"]
+    A --> R["Retrieval agent"]
+    R --> D
+    A --> C["Audit agent"]
+    C --> G["Report agent"]
+    G --> O["Answer, citations, report"]
+    A --> L["Workflow trace + audit history"]
+```
 
-- [Lesson 01: FastAPI 最小项目](docs/lesson-01-setup.md)
-- [Lesson 02: 文档上传与解析](docs/lesson-02-upload.md)
-- [Lesson 03: PDF、Word、Excel 解析](docs/lesson-03-parsers.md)
-- [Lesson 04: 分块检索与精确引用](docs/lesson-04-chunked-citations.md)
-- [Lesson 05: 数据库模型与初始迁移](docs/lesson-05-database-schema.md)
+## Demo Script
 
-## Demo script
+1. Start the app with Docker Compose.
+2. Open `http://127.0.0.1:8000`.
+3. Ask: `Can the legacy sales tool directly download the full customer list?`
+4. Show the grounded answer, citations, and risk findings.
+5. Switch between Alice and Bob to demonstrate knowledge-base isolation.
+6. Upload one PDF, DOCX, and XLSX sample from `data/sample_uploads`.
+7. Export the report as Markdown and PDF.
+8. Run `python scripts/run_evaluation.py` and open `docs/evaluation-report.md`.
 
-1. Start with: `销售是否可以直接导出完整客户名单？`
-2. Show the answer, evidence citations, and “客户数据导出需要审批” risk finding.
-3. Click “加载冲突案例”.
-4. Explain that the Agent finds the 2019 historical guide, compares it with current controls, and outputs a remediation recommendation.
-5. Upload a PDF, DOCX, or XLSX sample and show that the evidence card includes page, table, sheet, or line location.
-6. Run `python scripts/run_evaluation.py`.
+## Learning Notes
+
+- [Lesson 01: FastAPI setup](docs/lesson-01-setup.md)
+- [Lesson 02: Upload API](docs/lesson-02-upload.md)
+- [Lesson 03: PDF, Word, and Excel parsing](docs/lesson-03-parsers.md)
+- [Lesson 04: Chunked citations](docs/lesson-04-chunked-citations.md)
+- [Lesson 05: Database schema](docs/lesson-05-database-schema.md)
+- [Lesson 06: Vector search](docs/lesson-06-vector-search.md)
+- [Lesson 07: Workflow report](docs/lesson-07-workflow-report.md)
+- [Lesson 08: Report export](docs/lesson-08-report-export.md)
+- [Lesson 09: Permission schema](docs/lesson-09-permission-schema.md)
+- [Lesson 10: Auth isolation](docs/lesson-10-auth-isolation.md)
+- [Lesson 11: User switcher](docs/lesson-11-user-switcher.md)
+- [Lesson 12: Observability](docs/lesson-12-observability.md)
+- [Lesson 13: Trace persistence](docs/lesson-13-trace-persistence.md)
+- [Lesson 14: Audit history](docs/lesson-14-audit-history.md)
+- [Lesson 15: Evaluation](docs/lesson-15-evaluation.md)
 
 ## Roadmap
 
-- Replace local token vectors with embedding + pgvector/Qdrant.
-- Add authenticated tenant isolation and persistent audit logs.
-- Add HTML parsing and OCR for scanned PDFs.
-- Add LLM synthesis with strict JSON schema validation and LLM-as-judge evaluation.
+- Replace local scoring with production embeddings plus pgvector reranking.
+- Add HTML ingestion and OCR for scanned PDFs.
+- Add LLM synthesis with strict JSON schema validation.
+- Add LLM-as-judge and human-labeled citation-span evaluation.
+- Add a recorded demo video and real browser screenshots.
