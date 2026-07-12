@@ -110,3 +110,40 @@ def test_audit_log_is_filtered_by_user_header():
         assert local_response.json() == [{"event": "legacy_event_without_user"}]
     finally:
         main.audit_log[:] = original_audit_log
+
+
+def test_persist_audit_event_includes_workflow_trace():
+    original_audit_log = list(main.audit_log)
+    main.audit_log[:] = []
+
+    try:
+        main.persist_audit_event(
+            event_type="question_answered",
+            user_external_id="demo-alice",
+            question="Can customer data be exported?",
+            response={
+                "trace_id": "trace-1",
+                "answer": "Customer data requires approval.",
+                "report": {"summary": "Customer data requires approval."},
+                "citations": [{"document_id": "doc-1"}],
+                "findings": [{"level": "High"}],
+                "workflow_trace": [
+                    {
+                        "name": "retrieval_agent",
+                        "status": "completed",
+                        "detail": "retrieved 1 evidence chunk",
+                        "duration_ms": 11,
+                        "prompt": "Question: Can customer data be exported?",
+                        "tool_calls": ["evidence_loader"],
+                        "input_tokens": 10,
+                        "output_tokens": 24,
+                        "failure_reason": None,
+                    }
+                ],
+            },
+        )
+
+        assert main.audit_log[-1]["workflow_trace"][0]["name"] == "retrieval_agent"
+        assert main.audit_log[-1]["step_count"] == 1
+    finally:
+        main.audit_log[:] = original_audit_log

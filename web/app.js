@@ -7,6 +7,7 @@ const USERS = [
 ];
 
 let lastQuestion = "";
+let selectedTraceId = "";
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -49,6 +50,7 @@ function restoreCurrentUser() {
 
 function clearResult() {
   lastQuestion = "";
+  selectedTraceId = "";
   $("#results").hidden = true;
   $("#empty").hidden = false;
   $("#answer").textContent = "";
@@ -66,6 +68,68 @@ async function fetchJson(url, options = {}) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Request failed");
   return payload;
+}
+
+function renderTrace(trace, title = "工作流追踪") {
+  $("#trace").innerHTML = `
+    <div class="trace-head">
+      <h3>${escapeHtml(title)}</h3>
+    </div>
+    ${trace.map((step, index) => `
+      <div class="trace-item">
+        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} · ${step.duration_ms} ms</small></h3>
+        <p>${escapeHtml(step.detail)}</p>
+        <div class="trace-meta">
+          <span>Prompt: ${escapeHtml(step.prompt)}</span>
+          <span>Tools: ${escapeHtml((step.tool_calls || []).join(", "))}</span>
+          <span>Tokens: in ${step.input_tokens}, out ${step.output_tokens}</span>
+          <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+function renderAuditHistory(audit) {
+  if (!audit.length) {
+    $("#audit-history").innerHTML = '<div class="document muted">当前用户没有审计记录。</div>';
+    return;
+  }
+  $("#audit-history").innerHTML = audit.map((event) => {
+    const traceId = event.trace_id || "";
+    const isSelected = traceId && traceId === selectedTraceId;
+    const label = event.event === "report_exported" ? "导出" : "问答";
+    const summary = event.summary || event.question || "No summary";
+    return `
+      <div class="audit-item ${isSelected ? "selected" : ""}">
+        <div class="audit-item-main">
+          <strong>${escapeHtml(label)} · ${escapeHtml(event.user_id || currentUserId())}</strong>
+          <span>${escapeHtml(summary)}</span>
+          <small>${escapeHtml(event.duration_ms ?? 0)} ms · ${escapeHtml(event.step_count ?? 0)} steps</small>
+        </div>
+        <div class="audit-item-actions">
+          <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}">查看 trace</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  $("#audit-history").querySelectorAll("button[data-trace-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const traceId = button.getAttribute("data-trace-id");
+      const event = audit.find((item) => item.trace_id === traceId);
+      if (!event || !event.workflow_trace) return;
+      selectedTraceId = traceId || "";
+      renderTrace(event.workflow_trace, `${event.event} · ${traceId}`);
+      refreshAuditSelection();
+    });
+  });
+}
+
+function refreshAuditSelection() {
+  $("#audit-history").querySelectorAll(".audit-item").forEach((item) => {
+    item.classList.toggle("selected", item.querySelector("button[data-trace-id]")?.getAttribute("data-trace-id") === selectedTraceId);
+  });
 }
 
 async function refreshOverview() {
@@ -88,6 +152,14 @@ async function refreshOverview() {
         </div>
       `).join("")
     : `<div class="document muted">${escapeHtml(me.display_name)} has no visible documents.</div>`;
+  renderAuditHistory(audit);
+  if (selectedTraceId) {
+    const selected = audit.find((item) => item.trace_id === selectedTraceId);
+    if (selected?.workflow_trace) {
+      renderTrace(selected.workflow_trace, `${selected.event} · ${selected.trace_id}`);
+      refreshAuditSelection();
+    }
+  }
 }
 
 function renderResult(payload) {
@@ -108,18 +180,8 @@ function renderResult(payload) {
       <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
     </div>
   `).join("");
-  $("#trace").innerHTML = payload.workflow_trace.map((step, index) => `
-    <div class="trace-item">
-      <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} · ${step.duration_ms} ms</small></h3>
-      <p>${escapeHtml(step.detail)}</p>
-      <div class="trace-meta">
-        <span>Prompt: ${escapeHtml(step.prompt)}</span>
-        <span>Tools: ${escapeHtml(step.tool_calls.join(", "))}</span>
-        <span>Tokens: in ${step.input_tokens}, out ${step.output_tokens}</span>
-        <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
-      </div>
-    </div>
-  `).join("");
+  selectedTraceId = "";
+  renderTrace(payload.workflow_trace, `Current trace · ${payload.trace_id}`);
 }
 
 async function ask() {

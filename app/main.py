@@ -286,6 +286,7 @@ def persist_audit_event(
         "user_id": user_external_id,
         "duration_ms": trace_duration_ms,
         "step_count": len(response["workflow_trace"]),
+        "workflow_trace": response["workflow_trace"],
     }
     if event_type == "question_answered":
         event_payload.update(

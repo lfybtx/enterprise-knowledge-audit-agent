@@ -143,6 +143,33 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .trace-item h3 { font-size: 15px; margin: 0 0 7px; }
 .trace-item p { color: #475569; line-height: 1.55; font-size: 14px; }
 .trace-meta { display: grid; gap: 4px; color: #64748b; font-size: 12px; margin-top: 8px; }
+.trace-head h3 { font-size: 16px; margin: 0 0 10px; }
+.audit-history {
+  margin-top: 20px;
+  background: #fff;
+  border: 1px solid #d9e1ec;
+  border-radius: 8px;
+  padding: 22px;
+  display: grid;
+  gap: 16px;
+}
+.audit-history-list { display: grid; gap: 10px; }
+.audit-item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 12px;
+  background: #fff;
+}
+.audit-item.selected { border-color: #16735a; background: #f4fbf8; }
+.audit-item-main { display: grid; gap: 4px; }
+.audit-item-main strong { font-size: 14px; }
+.audit-item-main span { color: #334155; font-size: 13px; line-height: 1.45; }
+.audit-item-main small { color: #64748b; font-size: 12px; }
+.audit-item-actions { display: flex; align-items: center; }
 .document-section { display: grid; grid-template-columns: 220px 1fr; gap: 24px; }
 .document-list { display: grid; gap: 10px; }
 .document { border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; }
