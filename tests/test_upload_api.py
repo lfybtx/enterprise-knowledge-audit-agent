@@ -45,3 +45,41 @@ def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
     finally:
         main.documents[:] = original_documents
         main.retriever = original_retriever
+
+
+def test_runtime_documents_are_isolated_by_user_header(tmp_path, monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
+    original_documents = list(main.documents)
+    original_retriever = main.retriever
+    main.documents[:] = []
+    main.retriever = HybridRetriever(main.documents)
+
+    response = client.post(
+        "/api/documents",
+        headers={"X-User-Id": "demo-alice"},
+        json={
+            "title": "Alice export policy",
+            "source": "alice-policy.txt",
+            "content": "Alice private export approval requires manager review before customer data is shared.",
+        },
+    )
+
+    assert response.status_code == 201
+    document_id = response.json()["id"]
+
+    try:
+        alice_documents = client.get("/api/documents", headers={"X-User-Id": "demo-alice"}).json()
+        bob_documents = client.get("/api/documents", headers={"X-User-Id": "demo-bob"}).json()
+        bob_answer = client.post(
+            "/api/ask",
+            headers={"X-User-Id": "demo-bob"},
+            json={"question": "Does Alice export require manager review?"},
+        )
+
+        assert [document["id"] for document in alice_documents] == [document_id]
+        assert bob_documents == []
+        assert bob_answer.status_code == 404
+    finally:
+        main.documents[:] = original_documents
+        main.retriever = original_retriever

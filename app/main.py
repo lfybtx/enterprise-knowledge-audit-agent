@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -23,6 +23,8 @@ DOCUMENTS_PATH = ROOT / "app" / "data" / "sample_documents.json"
 RUNTIME_DIR = ROOT / "data" / "runtime"
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 RUNTIME_DOCUMENTS_PATH = RUNTIME_DIR / "documents.json"
+DEFAULT_USER_ID = "local-demo"
+USER_HEADER = "X-User-Id"
 
 
 class DocumentCreate(BaseModel):
@@ -103,8 +105,50 @@ def add_document(document: dict[str, Any]) -> None:
     retriever = HybridRetriever(documents)
 
 
-def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
+def document_visible_to_user(document: dict[str, Any], user_external_id: str) -> bool:
+    return document.get("owner_id", DEFAULT_USER_ID) == user_external_id
+
+
+def user_documents(user_external_id: str) -> list[dict[str, Any]]:
+    return [document for document in documents if document_visible_to_user(document, user_external_id)]
+
+
+def document_summary(document: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": document["id"],
+        "title": document["title"],
+        "source": document["source"],
+        "chunk_count": len(document.get("chunks", [])) or 1,
+    }
+
+
+def seed_document_summaries(user_external_id: str) -> list[dict[str, Any]]:
+    return [document_summary(document) for document in load_seed_documents() if document_visible_to_user(document, user_external_id)]
+
+
+def load_persisted_document_summaries(user_external_id: str) -> list[dict[str, Any]] | None:
+    if not os.getenv("DATABASE_URL"):
+        return None
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import database_is_ready, list_document_summaries
+
+        session = get_session_factory()()
+    except Exception:
+        return None
+    try:
+        if not database_is_ready(session):
+            return None
+        return list_document_summaries(session, user_external_id)
+    except RuntimeError:
+        return None
+    finally:
+        session.close()
+
+
+def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> dict[str, Any]:
     """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
+    document["owner_id"] = user_external_id
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
@@ -122,6 +166,7 @@ def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
                 try:
                     persisted_document = persist_document(
                         session,
+                        user_external_id=user_external_id,
                         title=document["title"],
                         source=document["source"],
                         file_type=document["file_type"],
@@ -139,7 +184,7 @@ def persist_or_save_runtime(document: dict[str, Any]) -> dict[str, Any]:
     return document
 
 
-def search_evidence(question: str):
+def search_user_evidence(question: str, user_external_id: str):
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
@@ -151,7 +196,7 @@ def search_evidence(question: str):
         try:
             if session is not None and database_is_ready(session):
                 try:
-                    persisted_hits = hybrid_search_chunks(session, question)
+                    persisted_hits = hybrid_search_chunks(session, question, user_external_id=user_external_id)
                     if persisted_hits:
                         return persisted_hits
                 except DatabaseUnavailableError:
@@ -159,7 +204,7 @@ def search_evidence(question: str):
         finally:
             if session is not None:
                 session.close()
-    return retriever.search(question)
+    return HybridRetriever(user_documents(user_external_id)).search(question)
 
 
 documents = load_documents()
@@ -186,20 +231,20 @@ def health() -> dict[str, object]:
 
 
 @app.get("/api/documents")
-def list_documents() -> list[dict[str, Any]]:
-    return [
-        {
-            "id": item["id"],
-            "title": item["title"],
-            "source": item["source"],
-            "chunk_count": len(item.get("chunks", [])) or 1,
-        }
-        for item in documents
-    ]
+def list_documents(user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER)) -> list[dict[str, Any]]:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    persisted_summaries = load_persisted_document_summaries(user_external_id)
+    if persisted_summaries is not None:
+        return seed_document_summaries(user_external_id) + persisted_summaries
+    return [document_summary(item) for item in user_documents(user_external_id)]
 
 
 @app.post("/api/documents", status_code=201)
-def create_document(payload: DocumentCreate) -> dict[str, str]:
+def create_document(
+    payload: DocumentCreate,
+    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+) -> dict[str, str]:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
     document_id = str(uuid4())
     document = {
         "id": document_id,
@@ -210,9 +255,9 @@ def create_document(payload: DocumentCreate) -> dict[str, str]:
             [{"text": payload.content, "location": {"kind": "document"}}],
         ),
     }
-    document = persist_or_save_runtime(document)
+    document = persist_or_save_runtime(document, user_external_id)
     add_document(document)
-    audit_log.append({"event": "document_ingested", "document_id": document["id"]})
+    audit_log.append({"event": "document_ingested", "document_id": document["id"], "user_id": user_external_id})
     return {"id": document["id"], "message": "Document indexed"}
 
 
@@ -220,7 +265,9 @@ def create_document(payload: DocumentCreate) -> dict[str, str]:
 async def upload_document(
     title: str = Form(..., min_length=2, max_length=120),
     file: UploadFile = File(...),
+    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
 ) -> dict[str, str]:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
     try:
@@ -249,21 +296,33 @@ async def upload_document(
             [{"text": section.text, "location": section.location} for section in parsed_document.sections],
         ),
     }
-    document = persist_or_save_runtime(document)
+    document = persist_or_save_runtime(document, user_external_id)
     add_document(document)
-    audit_log.append({"event": "document_uploaded", "document_id": document_id, "source": document["source"]})
-    return {"id": document_id, "message": "Document uploaded and indexed"}
+    audit_log.append(
+        {
+            "event": "document_uploaded",
+            "document_id": document["id"],
+            "source": document["source"],
+            "user_id": user_external_id,
+        }
+    )
+    return {"id": document["id"], "message": "Document uploaded and indexed"}
 
 
 @app.post("/api/ask")
-def ask(payload: QuestionRequest) -> dict[str, object]:
-    response = run_audit_workflow(payload.question, search_evidence)
+def ask(
+    payload: QuestionRequest,
+    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+) -> dict[str, object]:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
     audit_log.append(
         {
             "event": "question_answered",
             "question": payload.question,
+            "user_id": user_external_id,
             "evidence_ids": [item["document_id"] for item in response["citations"]],
             "risk_levels": [item["level"] for item in response["findings"]],
         }
@@ -277,12 +336,16 @@ def get_audit_log() -> list[dict[str, object]]:
 
 
 @app.post("/api/evaluate")
-def evaluate(cases: list[EvaluationCase]) -> dict[str, object]:
+def evaluate(
+    cases: list[EvaluationCase],
+    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+) -> dict[str, object]:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
     if not cases:
         raise HTTPException(status_code=400, detail="At least one evaluation case is required")
     outcomes = []
     for case in cases:
-        result = retriever.search(case.question, limit=1)
+        result = HybridRetriever(user_documents(user_external_id)).search(case.question, limit=1)
         actual = result[0].document_id if result else None
         outcomes.append(
             {
@@ -297,8 +360,12 @@ def evaluate(cases: list[EvaluationCase]) -> dict[str, object]:
 
 
 @app.post("/api/reports/export")
-def export_audit_report(payload: ReportExportRequest) -> Response:
-    response = run_audit_workflow(payload.question, search_evidence)
+def export_audit_report(
+    payload: ReportExportRequest,
+    user_external_id: str = Header(default=DEFAULT_USER_ID, alias=USER_HEADER),
+) -> Response:
+    user_external_id = user_external_id.strip() or DEFAULT_USER_ID
+    response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
 
