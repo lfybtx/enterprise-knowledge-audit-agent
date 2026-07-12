@@ -13,11 +13,11 @@ PDF_FONT_CANDIDATES = [
     "C:/Windows/Fonts/simhei.ttf",
     "C:/Windows/Fonts/msyh.ttf",
     "C:/Windows/Fonts/msyh.ttc",
+    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc",
     "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
     "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
     "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-    "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
 ]
 
 
@@ -95,13 +95,11 @@ def export_report_pdf(report: dict[str, Any]) -> bytes:
     except ImportError as exc:
         raise RuntimeError("PDF export requires reportlab. Run: pip install -r requirements.txt") from exc
 
-    font_path = find_pdf_font_path()
-    if font_path is None:
+    registered_font = register_pdf_font(pdfmetrics, TTFont)
+    if registered_font is None:
         raise RuntimeError(
             "PDF export requires a Unicode font. Set AUDIT_PDF_FONT_PATH to a Chinese-capable .ttf/.ttc font."
         )
-    if PDF_FONT_NAME not in pdfmetrics.getRegisteredFontNames():
-        pdfmetrics.registerFont(TTFont(PDF_FONT_NAME, str(font_path)))
     buffer = BytesIO()
     document = SimpleDocTemplate(
         buffer,
@@ -222,14 +220,27 @@ def escape_html(value: str) -> str:
     )
 
 
-def find_pdf_font_path() -> Path | None:
+def candidate_pdf_font_paths() -> list[Path]:
     configured_path = os.getenv("AUDIT_PDF_FONT_PATH")
     candidates = [configured_path] if configured_path else []
     candidates.extend(PDF_FONT_CANDIDATES)
+    paths: list[Path] = []
     for candidate in candidates:
         if not candidate:
             continue
         path = Path(candidate)
         if path.exists():
-            return path
+            paths.append(path)
+    return paths
+
+
+def register_pdf_font(pdfmetrics: Any, ttfont_class: Any) -> str | None:
+    if PDF_FONT_NAME in pdfmetrics.getRegisteredFontNames():
+        return PDF_FONT_NAME
+    for font_path in candidate_pdf_font_paths():
+        try:
+            pdfmetrics.registerFont(ttfont_class(PDF_FONT_NAME, str(font_path)))
+            return PDF_FONT_NAME
+        except Exception:
+            continue
     return None

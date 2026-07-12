@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 from pypdf import PdfReader
 
 import app.main as main
-from app.services.report_export import export_report, export_report_markdown
+from app.services import report_export
+from app.services.report_export import PDF_FONT_NAME, export_report, export_report_markdown, register_pdf_font
 
 
 client = TestClient(main.app)
@@ -74,3 +75,31 @@ def test_export_api_returns_attachment():
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("text/markdown")
     assert response.headers["content-disposition"].endswith('audit-report.md"')
+
+
+def test_register_pdf_font_skips_incompatible_font(monkeypatch, tmp_path):
+    bad_font = tmp_path / "bad.ttc"
+    good_font = tmp_path / "good.ttf"
+    bad_font.write_text("bad", encoding="utf-8")
+    good_font.write_text("good", encoding="utf-8")
+
+    class FakePdfMetrics:
+        registered = set()
+
+        @classmethod
+        def getRegisteredFontNames(cls):
+            return cls.registered
+
+        @classmethod
+        def registerFont(cls, font):
+            cls.registered.add(font.name)
+
+    class FakeTTFont:
+        def __init__(self, name, path):
+            if path == str(bad_font):
+                raise RuntimeError("incompatible font")
+            self.name = name
+
+    monkeypatch.setattr(report_export, "candidate_pdf_font_paths", lambda: [bad_font, good_font])
+
+    assert register_pdf_font(FakePdfMetrics, FakeTTFont) == PDF_FONT_NAME
