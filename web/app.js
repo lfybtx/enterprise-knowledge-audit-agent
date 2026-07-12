@@ -35,13 +35,8 @@ function currentKnowledgeBase() {
 }
 
 function authHeaders(extraHeaders = {}) {
-  const headers = {
-    ...extraHeaders,
-    "X-User-Id": currentUserId(),
-  };
-  if (selectedKnowledgeBaseId) {
-    headers["X-Knowledge-Base-Id"] = selectedKnowledgeBaseId;
-  }
+  const headers = { ...extraHeaders, "X-User-Id": currentUserId() };
+  if (selectedKnowledgeBaseId) headers["X-Knowledge-Base-Id"] = selectedKnowledgeBaseId;
   return headers;
 }
 
@@ -53,9 +48,7 @@ function savePreferences() {
 
 function restorePreferences() {
   const storedUser = localStorage.getItem("audit-agent-user-id");
-  if (USERS.some((user) => user.id === storedUser)) {
-    $("#user-select").value = storedUser;
-  }
+  if (USERS.some((user) => user.id === storedUser)) $("#user-select").value = storedUser;
   selectedKnowledgeBaseId = localStorage.getItem("audit-agent-kb-id") || "";
   savePreferences();
 }
@@ -87,10 +80,7 @@ function clearResult() {
 }
 
 async function fetchJson(url, options = {}) {
-  const response = await fetch(url, {
-    ...options,
-    headers: authHeaders(options.headers || {}),
-  });
+  const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "Request failed");
   return payload;
@@ -107,22 +97,20 @@ function renderKnowledgeBaseOptions(items) {
   select.innerHTML = knowledgeBases.map((item) => `
     <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(item.role)})</option>
   `).join("");
-  if (previous && knowledgeBases.some((item) => item.id === previous)) {
-    selectedKnowledgeBaseId = previous;
-  } else {
-    selectedKnowledgeBaseId = knowledgeBases[0]?.id || "";
-  }
+  selectedKnowledgeBaseId = previous && knowledgeBases.some((item) => item.id === previous)
+    ? previous
+    : knowledgeBases[0]?.id || "";
   select.value = selectedKnowledgeBaseId;
 }
 
 function renderEvaluationResults(payload) {
   const summary = payload.summary || {};
   $("#evaluation-summary").innerHTML = [
-    ["评测问题", summary.total ?? 0],
+    ["Cases", summary.total ?? 0],
     ["Recall@1", percent(summary.recall_at_1)],
     ["Recall@3", percent(summary.recall_at_3)],
-    ["引用准确率", percent(summary.citation_accuracy)],
-    ["回答质量", percent(summary.answer_quality_rate)],
+    ["Citation accuracy", percent(summary.citation_accuracy)],
+    ["Answer quality", percent(summary.answer_quality_rate)],
   ].map(([label, value]) => `
     <div class="evaluation-card">
       <span>${escapeHtml(label)}</span>
@@ -131,11 +119,16 @@ function renderEvaluationResults(payload) {
   `).join("");
 }
 
-function renderTrace(trace, title = "工作流追踪") {
+function renderTrace(trace, title = "Workflow trace") {
+  if (!trace || !trace.length) {
+    $("#trace").innerHTML = `
+      <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
+      <div class="document muted">No workflow trace is available for this audit record.</div>
+    `;
+    return;
+  }
   $("#trace").innerHTML = `
-    <div class="trace-head">
-      <h3>${escapeHtml(title)}</h3>
-    </div>
+    <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
     ${trace.map((step, index) => `
       <div class="trace-item">
         <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} - ${step.duration_ms} ms</small></h3>
@@ -153,13 +146,14 @@ function renderTrace(trace, title = "工作流追踪") {
 
 function renderAuditHistory(audit) {
   if (!audit.length) {
-    $("#audit-history").innerHTML = '<div class="document muted">当前用户没有审计记录。</div>';
+    $("#audit-history").innerHTML = '<div class="document muted">No audit records yet. Run an audit first, then the trace can be replayed here.</div>';
     return;
   }
   $("#audit-history").innerHTML = audit.map((event) => {
     const traceId = event.trace_id || "";
-    const isSelected = traceId && traceId === selectedTraceId;
-    const label = event.event === "report_exported" ? "导出" : "问答";
+    const hasTrace = Boolean(traceId && event.workflow_trace && event.workflow_trace.length);
+    const isSelected = hasTrace && traceId === selectedTraceId;
+    const label = event.event === "report_exported" ? "Export" : "Question";
     const summary = event.summary || event.question || "No summary";
     return `
       <div class="audit-item ${isSelected ? "selected" : ""}">
@@ -169,7 +163,9 @@ function renderAuditHistory(audit) {
           <small>${escapeHtml(event.duration_ms ?? 0)} ms - ${escapeHtml(event.step_count ?? 0)} steps</small>
         </div>
         <div class="audit-item-actions">
-          <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}">查看 trace</button>
+          <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}" ${hasTrace ? "" : "disabled"}>
+            ${hasTrace ? "View trace" : "No trace"}
+          </button>
         </div>
       </div>
     `;
@@ -179,7 +175,10 @@ function renderAuditHistory(audit) {
     button.addEventListener("click", () => {
       const traceId = button.getAttribute("data-trace-id");
       const event = audit.find((item) => item.trace_id === traceId);
-      if (!event || !event.workflow_trace) return;
+      if (!event || !event.workflow_trace || !event.workflow_trace.length) {
+        renderTrace([], "Workflow trace");
+        return;
+      }
       selectedTraceId = traceId || "";
       renderTrace(event.workflow_trace, `${event.event} - ${traceId}`);
       refreshAuditSelection();
@@ -207,7 +206,6 @@ async function refreshOverview() {
   $("#active-user").textContent = `${me.display_name} (${me.id})`;
   $("#audit-count").textContent = audit.length;
   renderKnowledgeBaseOptions(kbList);
-  $("#knowledge-base-select").value = selectedKnowledgeBaseId || knowledgeBases[0]?.id || "";
   selectedKnowledgeBaseId = $("#knowledge-base-select").value;
   applyPermissions();
   $("#documents").innerHTML = documents.length
@@ -222,10 +220,9 @@ async function refreshOverview() {
   renderEvaluationResults(evaluation);
   if (selectedTraceId) {
     const selected = audit.find((item) => item.trace_id === selectedTraceId);
-    if (selected?.workflow_trace) {
-      renderTrace(selected.workflow_trace, `${selected.event} - ${selected.trace_id}`);
-      refreshAuditSelection();
-    }
+    if (selected?.workflow_trace) renderTrace(selected.workflow_trace, `${selected.event} - ${selected.trace_id}`);
+    else selectedTraceId = "";
+    refreshAuditSelection();
   }
 }
 
@@ -270,7 +267,7 @@ async function ask() {
     alert(error.message);
   } finally {
     button.disabled = false;
-    button.textContent = "运行审计";
+    button.textContent = "Run audit";
   }
 }
 
@@ -315,12 +312,9 @@ async function uploadDocument(event) {
   button.disabled = true;
   status.textContent = "Uploading...";
   try {
-    await fetchJson("/api/documents/upload", {
-      method: "POST",
-      body: new FormData(form),
-    });
+    await fetchJson("/api/documents/upload", { method: "POST", body: new FormData(form) });
     form.reset();
-    form.querySelector("#knowledge-base-select").value = selectedKnowledgeBaseId;
+    $("#knowledge-base-select").value = selectedKnowledgeBaseId;
     status.textContent = `Uploaded for ${currentUserLabel()}`;
     await refreshOverview();
   } catch (error) {
@@ -348,7 +342,7 @@ $("#upload-form").addEventListener("submit", uploadDocument);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {
-  $("#question").value = "旧版销售工具是否可以直接下载完整客户名单？请指出它和当前制度的冲突，并给出整改建议。";
+  $("#question").value = "Can the legacy sales tool directly download the full customer list? Explain the conflict with current policy and suggest remediation.";
   ask();
 });
 $("#user-select").addEventListener("change", switchUser);

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,7 +11,7 @@
     <header>
       <div>
         <p class="eyebrow">Enterprise AI Control Room</p>
-        <h1>企业知识库审计 Agent</h1>
+        <h1>Knowledge Audit Agent</h1>
       </div>
       <div class="header-tools">
         <label class="user-switcher" for="user-select">
@@ -22,43 +22,43 @@
             <option value="demo-bob">Bob</option>
           </select>
         </label>
-        <span id="health" class="status">连接中</span>
+        <span id="health" class="status">Connecting</span>
       </div>
     </header>
     <main>
       <section class="workspace">
         <div class="question-panel">
-          <label for="question">向企业知识库提问</label>
-          <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
+          <label for="question">Ask the enterprise knowledge base</label>
+          <textarea id="question">Can sales directly export the full customer list? Explain the risk and the correct approval flow.</textarea>
           <div class="actions">
-            <button id="ask">运行审计</button>
-            <button id="example" class="secondary">加载冲突案例</button>
+            <button id="ask">Run audit</button>
+            <button id="example" class="secondary">Load conflict case</button>
           </div>
-          <p class="hint">回答只基于已检索到的证据，所有结论都会保留引用。</p>
+          <p class="hint">Answers are grounded in retrieved evidence and keep source citations.</p>
         </div>
         <aside class="metrics">
-          <div><span>已索引文档</span><strong id="document-count">-</strong></div>
-          <div><span>当前用户</span><strong id="active-user">local-demo</strong></div>
-          <div><span>当前角色</span><strong id="active-role">owner</strong></div>
-          <div><span>审计记录</span><strong id="audit-count">0</strong></div>
+          <div><span>Indexed documents</span><strong id="document-count">-</strong></div>
+          <div><span>Active user</span><strong id="active-user">local-demo</strong></div>
+          <div><span>Active role</span><strong id="active-role">owner</strong></div>
+          <div><span>Audit records</span><strong id="audit-count">0</strong></div>
         </aside>
       </section>
 
       <section class="upload-section">
         <div>
           <p class="panel-label">Document intake</p>
-          <h2>上传制度文档</h2>
-          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。viewer 角色会自动禁用上传。</p>
+          <h2>Upload policy documents</h2>
+          <p class="hint">Supports `.txt`, text-based PDF, `.docx`, and `.xlsx`. Viewer role disables upload controls.</p>
         </div>
         <form id="upload-form" class="upload-form">
           <label for="knowledge-base-select">Knowledge base</label>
           <select id="knowledge-base-select" name="knowledge_base_id"></select>
           <label for="upload-title">Document title</label>
-          <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="例如：客户数据导出补充规范" required />
+          <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="Customer export policy" required />
           <label for="upload-file">Document file</label>
           <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
           <div class="actions">
-            <button id="upload-button" type="submit">上传并入库</button>
+            <button id="upload-button" type="submit">Upload and index</button>
             <span id="upload-status" class="upload-status" role="status"></span>
           </div>
         </form>
@@ -67,12 +67,12 @@
       <section class="evaluation-section">
         <div>
           <p class="panel-label">Evaluation baseline</p>
-          <h2>评测基线</h2>
+          <h2>Evaluation baseline</h2>
         </div>
         <div id="evaluation-summary" class="evaluation-grid"></div>
       </section>
 
-      <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和风险发现。</section>
+      <section id="empty" class="empty-state">Run an audit to see the grounded answer, citations, risk findings, and trace.</section>
       <section id="results" hidden>
         <div class="results-toolbar">
           <span class="panel-label">Export</span>
@@ -83,40 +83,40 @@
         </div>
         <div class="results-grid">
           <article class="answer">
-            <p class="panel-label">带证据回答</p>
+            <p class="panel-label">Grounded answer</p>
             <div id="answer"></div>
           </article>
           <article class="findings">
-            <p class="panel-label">风险发现</p>
+            <p class="panel-label">Risk findings</p>
             <div id="findings"></div>
           </article>
         </div>
         <article class="citations">
-          <p class="panel-label">检索证据</p>
+          <p class="panel-label">Retrieved evidence</p>
           <div id="citations"></div>
         </article>
         <article class="trace">
-          <p class="panel-label">工作流追踪</p>
+          <p class="panel-label">Workflow trace</p>
           <div id="trace"></div>
         </article>
       </section>
 
       <section class="audit-history">
         <div>
-          <p class="panel-label">审计历史</p>
-          <h2>最近的问答与导出</h2>
+          <p class="panel-label">Audit history</p>
+          <h2>Recent questions and exports</h2>
         </div>
         <div id="audit-history" class="audit-history-list"></div>
       </section>
 
       <section class="document-section">
         <div>
-          <p class="panel-label">知识库内容</p>
-          <h2>当前知识库可见文档</h2>
+          <p class="panel-label">Knowledge content</p>
+          <h2>Visible documents</h2>
         </div>
         <div id="documents" class="document-list"></div>
       </section>
     </main>
-    <script src="/static/app.js?v=20260713-permissions"></script>
+    <script src="/static/app.js?v=20260713-trace-permissions"></script>
   </body>
 </html>
