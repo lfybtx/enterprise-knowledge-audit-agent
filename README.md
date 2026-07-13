@@ -190,6 +190,37 @@ The evaluation script writes:
 - `data/evaluation_results.json`
 - `docs/evaluation-report.md`
 
+## Reset Demo Data
+
+Before a live demo, clear demo audit history, remove persisted uploaded
+documents owned by `local-demo`, and import the curated sample documents from
+`data/test_uploads`:
+
+```bash
+docker compose exec app python scripts/reset_demo_data.py --all
+```
+
+The command above is a dry run. To actually modify PostgreSQL and seed MinIO,
+add `--apply`:
+
+```bash
+docker compose exec app python scripts/reset_demo_data.py --all --apply
+```
+
+Useful narrower variants:
+
+```bash
+docker compose exec app python scripts/reset_demo_data.py --clear-audit --apply
+docker compose exec app python scripts/reset_demo_data.py --clear-all-documents --seed-documents --apply
+docker compose exec app python scripts/reset_demo_data.py --clear-documents --seed-documents --apply
+```
+
+The reset script keeps the built-in read-only seed documents, clears demo
+workflow history for `local-demo`, `demo-alice`, and `demo-bob`, and reseeds the
+curated upload documents for `local-demo`. Use `--clear-documents` instead of
+`--clear-all-documents` when you only want to replace the curated demo uploads
+and keep other manually uploaded files.
+
 The README preview image can be regenerated with:
 
 ```bash
