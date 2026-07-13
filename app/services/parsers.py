@@ -188,11 +188,40 @@ def parse_pdf_sections(content: bytes) -> list[ParsedSection]:
         raise DocumentParseError("Unable to read this PDF. Please upload a valid, unencrypted PDF.") from exc
 
     if not pages:
-        raise EmptyDocumentError(
-            "PDF has no extractable text. It may be a scanned document and needs OCR before upload."
-        )
+        pages = parse_pdf_ocr_sections(content)
     normalize_text("\n\n".join(page.text for page in pages))
     return pages
+
+
+def parse_pdf_ocr_sections(content: bytes) -> list[ParsedSection]:
+    try:
+        from pdf2image import convert_from_bytes
+        import pytesseract
+    except ImportError as exc:
+        raise DocumentParseError(
+            "PDF has no extractable text and OCR dependencies are unavailable. Install pdf2image, pytesseract, Poppler, and Tesseract."
+        ) from exc
+
+    try:
+        images = convert_from_bytes(content, dpi=220, fmt="png", thread_count=1)
+    except Exception as exc:
+        raise DocumentParseError("Unable to render scanned PDF pages for OCR.") from exc
+
+    sections: list[ParsedSection] = []
+    for page_number, image in enumerate(images, start=1):
+        try:
+            page_text = pytesseract.image_to_string(image, lang="chi_sim+eng")
+        except Exception as exc:
+            raise DocumentParseError("OCR failed while reading scanned PDF pages.") from exc
+        cleaned = clean_text(page_text)
+        if cleaned:
+            sections.append(
+                ParsedSection(cleaned, {"kind": "page", "page_number": page_number, "ocr": True})
+            )
+
+    if not sections:
+        raise EmptyDocumentError("OCR completed but no readable text was found in this PDF.")
+    return sections
 
 
 def parse_docx(content: bytes) -> str:

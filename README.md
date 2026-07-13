@@ -33,7 +33,7 @@ Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 
 | Capability | Implementation |
 | --- | --- |
-| Upload and parsing | `.txt`, text-based PDF, `.docx`, `.xlsx`, HTML URL ingestion |
+| Upload and parsing | `.txt`, text-based PDF, scanned PDF OCR, `.docx`, `.xlsx`, HTML URL ingestion |
 | Chunking | Source-aware chunks with location metadata |
 | Retrieval | Keyword score + local vector cosine score; PostgreSQL path supports pgvector |
 | Citations | Title, source path, excerpt, score, and location label |
@@ -115,7 +115,7 @@ copy .env.example .env
 docker compose up --build
 ```
 
-Docker Compose starts the app and PostgreSQL with pgvector enabled. Uploaded documents and workflow traces are persisted in PostgreSQL when `DATABASE_URL` is configured.
+Docker Compose starts the app, PostgreSQL with pgvector, and MinIO. Uploaded documents and workflow traces are persisted in PostgreSQL when `DATABASE_URL` is configured. The app image includes Poppler and Tesseract so scanned PDFs can fall back to OCR when no embedded text layer is found.
 
 The Compose stack also starts MinIO:
 
@@ -172,7 +172,7 @@ Multipart fields:
 - `title`: document title
 - `file`: `.txt`, text-based `.pdf`, `.docx`, or `.xlsx`
 
-PDF support currently targets files with an embedded text layer. Scanned PDFs should go through OCR before upload.
+PDF parsing first uses the embedded text layer. If no text is found, Docker builds use Poppler + Tesseract OCR (`chi_sim+eng`) to extract scanned pages.
 
 Ingest a web page:
 
@@ -237,7 +237,7 @@ flowchart LR
 ## Roadmap
 
 - Replace local scoring with production embeddings plus pgvector reranking.
-- Add OCR for scanned PDFs.
+- Add production-grade OCR preprocessing and page image quality diagnostics.
 - Add LLM synthesis with strict JSON schema validation.
 - Add LLM-as-judge and human-labeled citation-span evaluation.
 - Add a recorded demo video and real browser screenshots.

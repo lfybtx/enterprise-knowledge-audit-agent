@@ -4,7 +4,14 @@ WORKDIR /app
 ENV PYTHONPATH=/app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq5 fonts-wqy-microhei fonts-noto-cjk \
+    && apt-get install -y --no-install-recommends \
+        libpq5 \
+        poppler-utils \
+        tesseract-ocr \
+        tesseract-ocr-chi-sim \
+        tesseract-ocr-eng \
+        fonts-wqy-microhei \
+        fonts-noto-cjk \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt requirements-db.txt requirements-local-models.txt ./

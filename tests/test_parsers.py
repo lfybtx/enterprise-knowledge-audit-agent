@@ -3,7 +3,9 @@ from io import BytesIO
 import pytest
 
 from app.services.parsers import (
+    DocumentParseError,
     EmptyDocumentError,
+    ParsedSection,
     UnsupportedFileTypeError,
     parse_document,
     parse_document_sections,
@@ -60,6 +62,33 @@ def test_parse_pdf_preserves_page_marker():
     assert file_type == "pdf"
     assert "[Page 1]" in text
     assert "regional manager approval" in text
+
+
+def test_parse_pdf_uses_ocr_when_text_layer_is_empty(monkeypatch):
+    pytest.importorskip("pypdf")
+
+    def fake_ocr(content):
+        return [ParsedSection("Scanned export approval requires legal review.", {"kind": "page", "page_number": 1, "ocr": True})]
+
+    monkeypatch.setattr("app.services.parsers.parse_pdf_ocr_sections", fake_ocr)
+
+    file_type, text = parse_document("scan.pdf", make_text_pdf(""))
+
+    assert file_type == "pdf"
+    assert "[Page 1]" in text
+    assert "legal review" in text
+
+
+def test_parse_pdf_reports_ocr_failure_when_scan_is_unreadable(monkeypatch):
+    pytest.importorskip("pypdf")
+
+    def fake_ocr(content):
+        raise DocumentParseError("OCR failed while reading scanned PDF pages.")
+
+    monkeypatch.setattr("app.services.parsers.parse_pdf_ocr_sections", fake_ocr)
+
+    with pytest.raises(DocumentParseError, match="OCR failed"):
+        parse_document("scan.pdf", make_text_pdf(""))
 
 
 def test_parse_docx_extracts_paragraphs_and_tables():
