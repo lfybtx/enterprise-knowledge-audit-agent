@@ -64,4 +64,6 @@ def format_location(location: dict[str, Any]) -> str:
     if kind == "lines":
         start, end = location["start_line"], location["end_line"]
         return f"第 {start} 行" if start == end else f"第 {start}-{end} 行"
+    if kind == "html_paragraph":
+        return f"HTML 第 {location['paragraph_number']} 段"
     return "整篇文档"

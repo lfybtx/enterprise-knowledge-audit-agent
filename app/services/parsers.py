@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from html.parser import HTMLParser
 from io import BytesIO
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 
-SUPPORTED_EXTENSIONS = {".docx", ".pdf", ".txt", ".xlsx"}
+SUPPORTED_EXTENSIONS = {".docx", ".htm", ".html", ".pdf", ".txt", ".xlsx"}
 
 
 class UnsupportedFileTypeError(ValueError):
@@ -52,6 +53,8 @@ def parse_document_sections(filename: str, content: bytes) -> ParsedDocument:
 
     if extension == ".txt":
         return ParsedDocument("txt", parse_txt_sections(content))
+    if extension in {".html", ".htm"}:
+        return ParsedDocument("html", parse_html_sections(content))
     if extension == ".pdf":
         return ParsedDocument("pdf", parse_pdf_sections(content))
     if extension == ".docx":
@@ -82,6 +85,86 @@ def parse_txt_sections(content: bytes) -> list[ParsedSection]:
         for index, line in enumerate(text.splitlines(), start=1)
         if line.strip()
     ]
+
+
+def parse_html_sections(content: bytes) -> list[ParsedSection]:
+    for encoding in ("utf-8-sig", "utf-8", "gbk"):
+        try:
+            html = content.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            continue
+    else:
+        html = content.decode("utf-8", errors="ignore")
+
+    extractor = HtmlTextExtractor()
+    extractor.feed(html)
+    extractor.close()
+    sections = [
+        ParsedSection(text, {"kind": "html_paragraph", "paragraph_number": index})
+        for index, text in enumerate(extractor.sections(), start=1)
+    ]
+    normalize_text("\n\n".join(section.text for section in sections))
+    return sections
+
+
+class HtmlTextExtractor(HTMLParser):
+    BLOCK_TAGS = {
+        "article",
+        "blockquote",
+        "br",
+        "div",
+        "h1",
+        "h2",
+        "h3",
+        "h4",
+        "h5",
+        "h6",
+        "li",
+        "p",
+        "section",
+        "td",
+        "th",
+        "tr",
+    }
+    SKIP_TAGS = {"script", "style", "noscript", "svg"}
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._skip_depth = 0
+        self._current: list[str] = []
+        self._sections: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
+        if tag in self.SKIP_TAGS:
+            self._skip_depth += 1
+            return
+        if tag in self.BLOCK_TAGS:
+            self._flush()
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.SKIP_TAGS and self._skip_depth:
+            self._skip_depth -= 1
+            return
+        if tag in self.BLOCK_TAGS:
+            self._flush()
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth:
+            return
+        cleaned = " ".join(data.split())
+        if cleaned:
+            self._current.append(cleaned)
+
+    def sections(self) -> list[str]:
+        self._flush()
+        return self._sections
+
+    def _flush(self) -> None:
+        text = " ".join(self._current).strip()
+        self._current = []
+        if text:
+            self._sections.append(text)
 
 
 def parse_pdf(content: bytes) -> str:
@@ -232,4 +315,6 @@ def location_marker(location: dict[str, Any]) -> str:
         return f"[Table {location['table_number']} Row {location['row_number']}]"
     if kind == "sheet_row":
         return f"[Sheet: {location['sheet_name']}] [Row {location['row_number']}]"
+    if kind == "html_paragraph":
+        return f"[HTML Paragraph {location['paragraph_number']}]"
     return f"[Lines {location['start_line']}-{location['end_line']}]"

@@ -33,7 +33,7 @@ Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 
 | Capability | Implementation |
 | --- | --- |
-| Upload and parsing | `.txt`, text-based PDF, `.docx`, `.xlsx` |
+| Upload and parsing | `.txt`, text-based PDF, `.docx`, `.xlsx`, HTML URL ingestion |
 | Chunking | Source-aware chunks with location metadata |
 | Retrieval | Keyword score + local vector cosine score; PostgreSQL path supports pgvector |
 | Citations | Title, source path, excerpt, score, and location label |
@@ -174,6 +174,19 @@ Multipart fields:
 
 PDF support currently targets files with an embedded text layer. Scanned PDFs should go through OCR before upload.
 
+Ingest a web page:
+
+```http
+POST /api/documents/ingest-url
+```
+
+JSON body:
+
+- `title`: document title
+- `url`: `http` or `https` HTML page
+
+The page is fetched, visible HTML text is parsed into paragraph-level sections, and the resulting chunks are indexed like uploaded files.
+
 ## Architecture
 
 See [docs/architecture.md](docs/architecture.md).
@@ -224,7 +237,7 @@ flowchart LR
 ## Roadmap
 
 - Replace local scoring with production embeddings plus pgvector reranking.
-- Add HTML ingestion and OCR for scanned PDFs.
+- Add OCR for scanned PDFs.
 - Add LLM synthesis with strict JSON schema validation.
 - Add LLM-as-judge and human-labeled citation-span evaluation.
 - Add a recorded demo video and real browser screenshots.

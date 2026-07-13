@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Knowledge Audit Agent</title>
+    <title>企业知识库审计 Agent</title>
     <link rel="icon" href="/favicon.ico" />
     <link rel="stylesheet" href="/static/styles.css" />
   </head>
@@ -21,7 +21,7 @@
           <button id="logout-button" type="button" class="secondary" hidden>退出</button>
         </form>
         <label class="user-switcher" for="user-select">
-          <span>当前用户</span>
+          <span>演示用户</span>
           <select id="user-select">
             <option value="local-demo">Local Demo</option>
             <option value="demo-alice">Alice</option>
@@ -52,28 +52,40 @@
 
       <section class="upload-section">
         <div>
-          <p class="panel-label">Document intake</p>
+          <p class="panel-label">文档接入</p>
           <h2>上传制度文档</h2>
-          <p class="hint">支持 `.txt`、文本型 PDF、`.docx`、`.xlsx`。viewer 角色会自动禁用上传。</p>
+          <p class="hint">支持 TXT、文本型 PDF、Word、Excel 和网页 URL；viewer 角色不能写入。</p>
         </div>
-        <form id="upload-form" class="upload-form">
-          <label for="knowledge-base-select">知识库</label>
-          <select id="knowledge-base-select" name="knowledge_base_id"></select>
-          <label for="upload-title">文档标题</label>
-          <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="客户导出制度" required />
-          <label for="upload-file">文档文件</label>
-          <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
-          <div class="actions">
-            <button id="upload-button" type="submit">上传并入库</button>
-            <span id="upload-status" class="upload-status" role="status"></span>
-          </div>
-        </form>
+        <div class="intake-forms">
+          <form id="upload-form" class="upload-form">
+            <label for="knowledge-base-select">知识库</label>
+            <select id="knowledge-base-select" name="knowledge_base_id"></select>
+            <label for="upload-title">文档标题</label>
+            <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="客户导出制度" required />
+            <label for="upload-file">文档文件</label>
+            <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+            <div class="actions">
+              <button id="upload-button" type="submit">上传并入库</button>
+              <span id="upload-status" class="upload-status" role="status"></span>
+            </div>
+          </form>
+          <form id="url-ingest-form" class="upload-form url-ingest-form">
+            <label for="url-title">网页标题</label>
+            <input id="url-title" name="title" type="text" minlength="2" maxlength="120" placeholder="公开合规说明" required />
+            <label for="url-input">网页 URL</label>
+            <input id="url-input" name="url" type="url" placeholder="https://example.com/policy.html" required />
+            <div class="actions">
+              <button id="url-ingest-button" type="submit">抓取网页</button>
+              <span id="url-ingest-status" class="upload-status" role="status"></span>
+            </div>
+          </form>
+        </div>
       </section>
 
       <section class="evaluation-section">
         <div>
-          <p class="panel-label">Evaluation baseline</p>
-          <h2>评测基线</h2>
+          <p class="panel-label">评测基线</p>
+          <h2>评测结果</h2>
         </div>
         <div id="evaluation-summary" class="evaluation-grid"></div>
       </section>
@@ -81,7 +93,7 @@
       <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和流程步骤。</section>
       <section id="results" hidden>
         <div class="results-toolbar">
-          <span class="panel-label">Export</span>
+          <span class="panel-label">导出报告</span>
           <div class="actions">
             <button id="export-md" class="secondary" type="button">Markdown</button>
             <button id="export-pdf" class="secondary" type="button">PDF</button>
@@ -124,6 +136,6 @@
         <div id="documents" class="document-list"></div>
       </section>
     </main>
-    <script src="/static/app.js?v=20260713-human-review"></script>
+    <script src="/static/app.js?v=20260713-url-ingest"></script>
   </body>
 </html>

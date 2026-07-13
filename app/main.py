@@ -4,8 +4,10 @@ import json
 import os
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 from uuid import uuid4
 
+import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -87,6 +89,11 @@ class ReportExportRequest(BaseModel):
 class WorkflowReviewRequest(BaseModel):
     decision: str = Field(pattern="^(approved|rejected)$")
     comment: Optional[str] = Field(default=None, max_length=500)
+
+
+class UrlIngestRequest(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    url: str = Field(min_length=8, max_length=1000)
 
 
 class LoginRequest(BaseModel):
@@ -596,6 +603,60 @@ async def upload_document(
         "source": document["source"],
         "storage_backend": stored_object.backend,
     }
+
+
+@app.post("/api/documents/ingest-url", status_code=201)
+def ingest_url_document(
+    payload: UrlIngestRequest,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> dict[str, str]:
+    require_write_access(current_user.id)
+    parsed_url = urlparse(payload.url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        raise HTTPException(status_code=400, detail="Only http and https URLs can be ingested")
+
+    try:
+        response = httpx.get(payload.url, follow_redirects=True, timeout=15.0)
+        response.raise_for_status()
+    except httpx.HTTPError as exc:
+        raise HTTPException(status_code=400, detail=f"Unable to fetch URL: {exc}") from exc
+
+    content_type = response.headers.get("content-type", "")
+    if "html" not in content_type.lower() and not payload.url.lower().endswith((".html", ".htm")):
+        raise HTTPException(status_code=415, detail="URL ingestion currently supports HTML pages only")
+    if len(response.content) > 2_000_000:
+        raise HTTPException(status_code=413, detail="HTML page is too large to ingest")
+
+    try:
+        parsed_document = parse_document_sections("webpage.html", response.content)
+    except EmptyDocumentError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except DocumentParseError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    document_id = str(uuid4())
+    document = {
+        "id": document_id,
+        "title": payload.title,
+        "source": str(response.url),
+        "file_type": parsed_document.file_type,
+        "content": parsed_document.text,
+        "chunks": build_chunks(
+            document_id,
+            [{"text": section.text, "location": section.location} for section in parsed_document.sections],
+        ),
+    }
+    document = persist_or_save_runtime(document, current_user.id)
+    add_document(document)
+    audit_log.append(
+        {
+            "event": "url_ingested",
+            "document_id": document["id"],
+            "source": document["source"],
+            "user_id": current_user.id,
+        }
+    )
+    return {"id": document["id"], "message": "URL ingested and indexed", "source": document["source"]}
 
 
 @app.post("/api/ask")

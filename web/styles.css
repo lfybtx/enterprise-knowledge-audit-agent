@@ -139,7 +139,9 @@ button:disabled { opacity: 0.65; cursor: wait; }
   border-radius: 8px;
   padding: 22px;
 }
+.intake-forms { display: grid; gap: 18px; }
 .upload-form { display: grid; gap: 8px; }
+.url-ingest-form { border-top: 1px solid #e2e8f0; padding-top: 16px; }
 .upload-form label { margin: 0; font-size: 13px; }
 .upload-form input[type="text"],
 .upload-form select,

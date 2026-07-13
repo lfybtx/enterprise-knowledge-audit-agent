@@ -44,10 +44,24 @@ function authHeaders(extraHeaders = {}) {
   return headers;
 }
 
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.detail || "请求失败");
+  return payload;
+}
+
 function savePreferences() {
   localStorage.setItem("audit-agent-user-id", currentUserId());
   localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);
   $("#active-user").textContent = currentUserLabel();
+}
+
+function restorePreferences() {
+  const storedUser = localStorage.getItem("audit-agent-user-id");
+  if (USERS.some((user) => user.id === storedUser)) $("#user-select").value = storedUser;
+  selectedKnowledgeBaseId = localStorage.getItem("audit-agent-kb-id") || "";
+  savePreferences();
 }
 
 function syncLoginState() {
@@ -58,17 +72,11 @@ function syncLoginState() {
   $("#user-select").disabled = loggedIn;
 }
 
-function restorePreferences() {
-  const storedUser = localStorage.getItem("audit-agent-user-id");
-  if (USERS.some((user) => user.id === storedUser)) $("#user-select").value = storedUser;
-  selectedKnowledgeBaseId = localStorage.getItem("audit-agent-kb-id") || "";
-  savePreferences();
-}
-
-function setUploadEnabled(enabled) {
-  $("#upload-button").disabled = !enabled;
-  $("#upload-title").disabled = !enabled;
-  $("#upload-file").disabled = !enabled;
+function setWriteEnabled(enabled) {
+  ["#upload-button", "#upload-title", "#upload-file", "#url-ingest-button", "#url-title", "#url-input"].forEach((selector) => {
+    const node = $(selector);
+    if (node) node.disabled = !enabled;
+  });
 }
 
 function applyPermissions() {
@@ -76,7 +84,8 @@ function applyPermissions() {
   const canWrite = Boolean(kb?.can_write);
   $("#active-role").textContent = kb?.role || "-";
   $("#upload-status").textContent = canWrite ? "" : "当前角色无上传权限。";
-  setUploadEnabled(canWrite);
+  $("#url-ingest-status").textContent = canWrite ? "" : "当前角色无网页入库权限。";
+  setWriteEnabled(canWrite);
 }
 
 function clearResult() {
@@ -90,13 +99,11 @@ function clearResult() {
   $("#citations").innerHTML = "";
   $("#trace").innerHTML = "";
   $("#upload-status").textContent = "";
+  $("#url-ingest-status").textContent = "";
 }
 
-async function fetchJson(url, options = {}) {
-  const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
-  const payload = await response.json();
-  if (!response.ok) throw new Error(payload.detail || "请求失败");
-  return payload;
+function percent(value) {
+  return `${((Number(value) || 0) * 100).toFixed(1)}%`;
 }
 
 async function login(event) {
@@ -133,21 +140,16 @@ async function logout() {
   await refreshOverview();
 }
 
-function percent(value) {
-  return `${((Number(value) || 0) * 100).toFixed(1)}%`;
-}
-
 function renderKnowledgeBaseOptions(items) {
   knowledgeBases = items || [];
-  const select = $("#knowledge-base-select");
   const previous = selectedKnowledgeBaseId;
-  select.innerHTML = knowledgeBases.map((item) => `
+  $("#knowledge-base-select").innerHTML = knowledgeBases.map((item) => `
     <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(item.role)})</option>
   `).join("");
   selectedKnowledgeBaseId = previous && knowledgeBases.some((item) => item.id === previous)
     ? previous
     : knowledgeBases[0]?.id || "";
-  select.value = selectedKnowledgeBaseId;
+  $("#knowledge-base-select").value = selectedKnowledgeBaseId;
 }
 
 function renderEvaluationResults(payload) {
@@ -164,32 +166,6 @@ function renderEvaluationResults(payload) {
       <strong>${escapeHtml(value)}</strong>
     </div>
   `).join("");
-}
-
-function renderTrace(trace, title = "工作流 trace") {
-  if (!trace || !trace.length) {
-    $("#trace").innerHTML = `
-      <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
-      <div class="document muted">当前没有可展示的流程步骤。</div>
-    `;
-    return;
-  }
-  $("#trace").innerHTML = `
-    <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
-    ${trace.map((step, index) => `
-      <div class="trace-item">
-        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} - ${step.duration_ms} ms</small></h3>
-        <p>${escapeHtml(step.detail)}</p>
-        <div class="trace-meta">
-          <span>Prompt: ${escapeHtml(step.prompt)}</span>
-          <span>Tools: ${escapeHtml((step.tool_calls || []).join(", "))}</span>
-          <span>Tokens: in ${step.input_tokens}, out ${step.output_tokens}</span>
-          <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
-        </div>
-        ${renderRetrievalCandidates(step.trace_data?.retrieval)}
-      </div>
-    `).join("")}
-  `;
 }
 
 function renderRetrievalCandidates(retrieval) {
@@ -210,22 +186,56 @@ function renderRetrievalCandidates(retrieval) {
   `;
 }
 
+function renderTrace(trace, title = "工作流 Trace") {
+  if (!trace || !trace.length) {
+    $("#trace").innerHTML = `
+      <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
+      <div class="document muted">当前没有可展示的流程步骤。</div>
+    `;
+    return;
+  }
+  $("#trace").innerHTML = `
+    <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
+    ${trace.map((step, index) => `
+      <div class="trace-item">
+        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} - ${escapeHtml(step.duration_ms)} ms</small></h3>
+        <p>${escapeHtml(step.detail)}</p>
+        <div class="trace-meta">
+          <span>Prompt: ${escapeHtml(step.prompt)}</span>
+          <span>Tools: ${escapeHtml((step.tool_calls || []).join(", "))}</span>
+          <span>Tokens: in ${escapeHtml(step.input_tokens)}, out ${escapeHtml(step.output_tokens)}</span>
+          <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
+        </div>
+        ${renderRetrievalCandidates(step.trace_data?.retrieval)}
+      </div>
+    `).join("")}
+  `;
+}
+
 function renderEmptyAuditHistory() {
   const trace = [
-    { name: "检索 Agent", status: "待运行", duration_ms: 0, detail: "从当前知识库执行关键词与向量混合检索，并准备证据引用。", prompt: "等待问题输入", tool_calls: ["keyword_search", "vector_search"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
-    { name: "审计 Agent", status: "待运行", duration_ms: 0, detail: "检查证据中的风险、冲突和缺失信息，形成结构化风险判断。", prompt: "等待检索结果", tool_calls: ["conflict_check", "risk_assessment"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
-    { name: "报告 Agent", status: "待运行", duration_ms: 0, detail: "汇总审计结论、依据、建议动作和来源引用，生成最终报告。", prompt: "等待审计结果", tool_calls: ["report_builder"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "检索 Agent", status: "待运行", duration_ms: 0, detail: "执行关键词与向量混合检索。", prompt: "等待问题输入", tool_calls: ["keyword_search", "vector_search"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "审计 Agent", status: "待运行", duration_ms: 0, detail: "检查风险、冲突和缺失信息。", prompt: "等待检索结果", tool_calls: ["conflict_check", "risk_assessment"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "报告 Agent", status: "待运行", duration_ms: 0, detail: "生成结论、依据、建议动作和引用。", prompt: "等待审计结果", tool_calls: ["report_builder"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
   ];
   $("#audit-history").innerHTML = `<div class="document muted">当前没有审计记录，可以先查看工作流预览。</div><div class="actions" style="margin-top: 10px;"><button type="button" class="secondary" id="replay-current-trace">查看 Trace 流程</button></div>`;
   $("#replay-current-trace").addEventListener("click", () => {
-    const previewTrace = lastWorkflowTrace.length ? lastWorkflowTrace : trace;
     $("#empty").hidden = true;
     $("#results").hidden = false;
     $("#answer").textContent = "尚未运行审计，当前显示的是工作流预览。";
     $("#findings").innerHTML = '<div class="document muted">暂无风险发现</div>';
     $("#citations").innerHTML = '<div class="document muted">暂无证据引用</div>';
-    renderTrace(previewTrace, "审计工作流 Trace 预览");
+    renderTrace(lastWorkflowTrace.length ? lastWorkflowTrace : trace, "审计工作流 Trace 预览");
   });
+}
+
+function approvalStatusLabel(status) {
+  return {
+    pending: "待人工确认",
+    approved: "已批准",
+    rejected: "已驳回",
+    not_required: "无需审核",
+  }[status] || status;
 }
 
 function renderAuditHistory(audit) {
@@ -233,27 +243,6 @@ function renderAuditHistory(audit) {
     renderEmptyAuditHistory();
     return;
   }
-  if (!audit.length) {
-    const canReplayCurrentTrace = Boolean(lastWorkflowTrace.length);
-    $("#audit-history").innerHTML = `
-      <div class="document muted">当前没有审计记录，先运行一次审计。</div>
-      <div class="actions" style="margin-top: 10px;">
-        <button type="button" class="secondary" id="replay-current-trace" ${canReplayCurrentTrace ? "" : "disabled"}>
-          ${canReplayCurrentTrace ? "查看当前 trace" : "暂无 trace"}
-        </button>
-      </div>
-    `;
-    const replayButton = $("#replay-current-trace");
-    if (replayButton) {
-      replayButton.addEventListener("click", () => {
-        if (!lastWorkflowTrace.length) return;
-        selectedTraceId = "";
-        renderTrace(lastWorkflowTrace, "当前流程 trace");
-      });
-    }
-    return;
-  }
-
   $("#audit-history").innerHTML = audit.map((event) => {
     const traceId = event.trace_id || "";
     const hasTrace = Boolean(traceId && event.workflow_trace && event.workflow_trace.length);
@@ -271,8 +260,8 @@ function renderAuditHistory(audit) {
         </div>
         <div class="audit-item-actions">
           ${approvalStatus === "pending" ? `
-            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="approved">\u6279\u51c6</button>
-            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="rejected">\u9a73\u56de</button>
+            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="approved">批准</button>
+            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="rejected">驳回</button>
           ` : ""}
           <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}" ${hasTrace ? "" : "disabled"}>
             ${hasTrace ? "查看 trace" : "暂无 trace"}
@@ -286,21 +275,18 @@ function renderAuditHistory(audit) {
     button.addEventListener("click", () => {
       const traceId = button.getAttribute("data-trace-id");
       const event = audit.find((item) => item.trace_id === traceId);
-      if (!event || !event.workflow_trace || !event.workflow_trace.length) {
-        renderTrace([], "工作流 trace");
-        return;
-      }
       selectedTraceId = traceId || "";
       $("#empty").hidden = true;
       $("#results").hidden = false;
-      $("#answer").textContent = event.question || event.summary || "该审计记录没有保存回答正文。";
+      $("#answer").textContent = event?.question || event?.summary || "该审计记录没有保存回答正文。";
       $("#findings").innerHTML = '<div class="document muted">历史记录中未保存风险明细，请查看下方 Trace 步骤。</div>';
       $("#citations").innerHTML = '<div class="document muted">历史记录中未保存证据明细，请查看 Trace 中的检索步骤。</div>';
-      renderTrace(event.workflow_trace, `${event.event} - ${traceId}`);
+      renderTrace(event?.workflow_trace || [], `${event?.event || "workflow"} - ${traceId}`);
       refreshAuditSelection();
       $("#trace").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
+
   $("#audit-history").querySelectorAll("button[data-review-trace-id]").forEach((button) => {
     button.addEventListener("click", async () => {
       const traceId = button.getAttribute("data-review-trace-id");
@@ -319,15 +305,6 @@ function renderAuditHistory(audit) {
       }
     });
   });
-}
-
-function approvalStatusLabel(status) {
-  return {
-    pending: "\u5f85\u4eba\u5de5\u786e\u8ba4",
-    approved: "\u5df2\u6279\u51c6",
-    rejected: "\u5df2\u9a73\u56de",
-    not_required: "\u65e0\u9700\u5ba1\u6838",
-  }[status] || status;
 }
 
 function refreshAuditSelection() {
@@ -356,7 +333,7 @@ async function refreshOverview() {
     ? documents.map((document) => `
         <div class="document">
           <strong>${escapeHtml(document.title)}</strong>
-          <span>${escapeHtml(document.source)} - ${document.chunk_count} chunks</span>
+          <span>${escapeHtml(document.source)} - ${escapeHtml(document.chunk_count)} chunks</span>
         </div>
       `).join("")
     : `<div class="document muted">${escapeHtml(me.display_name)} 当前没有可见文档。</div>`;
@@ -384,7 +361,7 @@ function renderResult(payload) {
   `).join("");
   $("#citations").innerHTML = payload.citations.map((citation, index) => `
     <div class="citation">
-      <h3>证据 ${index + 1} - ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
+      <h3>证据 ${index + 1} - ${escapeHtml(citation.title)} <small>(${escapeHtml(citation.score)})</small></h3>
       <p>${escapeHtml(citation.excerpt)}</p>
       <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
       <div class="retrieval-scores">
@@ -403,14 +380,13 @@ function renderResult(payload) {
 
 function renderApprovalPanel(payload) {
   const panel = $("#approval-panel");
-  if (!panel) return;
   if (payload.approval_status !== "pending") {
     panel.hidden = true;
     panel.innerHTML = "";
     return;
   }
   panel.hidden = false;
-  panel.innerHTML = `<div><strong>\u5f85\u4eba\u5de5\u786e\u8ba4</strong><span>\u8be5\u5ba1\u8ba1\u62a5\u544a\u9700\u8981\u8d1f\u8d23\u4eba\u786e\u8ba4\u3002</span></div><div class="approval-actions"><button type="button" class="secondary" id="approve-current-audit">\u6279\u51c6\u62a5\u544a</button><button type="button" class="secondary" id="reject-current-audit">\u9a73\u56de\u62a5\u544a</button></div>`;
+  panel.innerHTML = `<div><strong>待人工确认</strong><span>该审计报告需要负责人确认。</span></div><div class="approval-actions"><button type="button" class="secondary" id="approve-current-audit">批准报告</button><button type="button" class="secondary" id="reject-current-audit">驳回报告</button></div>`;
   $("#approve-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "approved"));
   $("#reject-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "rejected"));
 }
@@ -418,8 +394,12 @@ function renderApprovalPanel(payload) {
 async function reviewCurrentAudit(traceId, decision) {
   document.querySelectorAll("#approval-panel button").forEach((button) => { button.disabled = true; });
   try {
-    await fetchJson(`/api/audit-runs/${encodeURIComponent(traceId)}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision }) });
-    $("#approval-panel").innerHTML = `<strong>${decision === "approved" ? "\u5df2\u6279\u51c6" : "\u5df2\u9a73\u56de"}</strong>`;
+    await fetchJson(`/api/audit-runs/${encodeURIComponent(traceId)}/review`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ decision }),
+    });
+    $("#approval-panel").innerHTML = `<strong>${decision === "approved" ? "已批准" : "已驳回"}</strong>`;
     await refreshOverview();
   } catch (error) {
     alert(error.message);
@@ -503,6 +483,37 @@ async function uploadDocument(event) {
   }
 }
 
+async function ingestUrlDocument(event) {
+  event.preventDefault();
+  if (!currentKnowledgeBase()?.can_write) {
+    $("#url-ingest-status").textContent = "当前角色无网页入库权限。";
+    return;
+  }
+  const form = $("#url-ingest-form");
+  const button = $("#url-ingest-button");
+  const status = $("#url-ingest-status");
+  const title = $("#url-title").value.trim();
+  const url = $("#url-input").value.trim();
+  if (!title || !url) return;
+
+  button.disabled = true;
+  status.textContent = "抓取中...";
+  try {
+    await fetchJson("/api/documents/ingest-url", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title, url }),
+    });
+    form.reset();
+    status.textContent = `已抓取 ${new URL(url).hostname}`;
+    await refreshOverview();
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function switchUser() {
   savePreferences();
   clearResult();
@@ -518,6 +529,7 @@ async function switchKnowledgeBase() {
 
 $("#ask").addEventListener("click", ask);
 $("#upload-form").addEventListener("submit", uploadDocument);
+$("#url-ingest-form").addEventListener("submit", ingestUrlDocument);
 $("#login-form").addEventListener("submit", login);
 $("#logout-button").addEventListener("click", logout);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
@@ -529,45 +541,6 @@ $("#example").addEventListener("click", () => {
 $("#user-select").addEventListener("change", switchUser);
 $("#knowledge-base-select").addEventListener("change", switchKnowledgeBase);
 
-function restoreChineseUi() {
-  document.title = "企业知识库审计 Agent";
-  const text = {
-    ".eyebrow": "企业 AI 审计控制台",
-    "header h1": "企业知识库审计 Agent",
-    ".user-switcher span": "当前用户",
-    ".question-panel label": "向企业知识库提问",
-    ".question-panel .hint": "回答只基于已检索到的证据，所有结论都会保留引用。",
-    ".upload-section .panel-label": "文档接入",
-    ".upload-section h2": "上传制度文档",
-    ".upload-section .hint": "支持 TXT、PDF、Word 和 Excel；viewer 角色不能上传。",
-    ".evaluation-section .panel-label": "评测基线",
-    ".results-toolbar .panel-label": "导出报告",
-    ".answer .panel-label": "带证据回答",
-    ".findings .panel-label": "风险发现",
-    ".citations .panel-label": "检索证据",
-    ".trace .panel-label": "工作流追踪",
-    ".audit-history .panel-label": "审计历史",
-    ".audit-history h2": "最近的问答与导出",
-    ".document-section .panel-label": "知识库内容",
-    ".document-section h2": "当前知识库可见文档",
-  };
-  Object.entries(text).forEach(([selector, value]) => { const node = $(selector); if (node) node.textContent = value; });
-  $("#ask").textContent = "运行审计";
-  $("#example").textContent = "加载冲突案例";
-  $("#health").textContent = "连接中";
-  const metricLabels = document.querySelectorAll(".metrics div span");
-  ["已索引文档", "当前用户", "当前角色", "审计记录"].forEach((value, index) => { if (metricLabels[index]) metricLabels[index].textContent = value; });
-  $("#export-md").textContent = "Markdown";
-  $("#export-pdf").textContent = "PDF";
-  $("#question").value = "销售是否可以直接导出完整客户名单？请说明风险和正确流程。";
-  $("#upload-title").placeholder = "客户导出制度";
-  const labels = document.querySelectorAll("#upload-form > label");
-  ["知识库", "文档标题", "文档文件"].forEach((value, index) => { if (labels[index]) labels[index].textContent = value; });
-  const options = $("#user-select").options;
-  if (options.length >= 3) { options[0].textContent = "本地演示"; options[1].textContent = "Alice"; options[2].textContent = "Bob"; }
-}
-
-restoreChineseUi();
 restorePreferences();
 syncLoginState();
 refreshOverview();

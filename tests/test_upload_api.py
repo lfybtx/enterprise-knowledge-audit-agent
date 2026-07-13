@@ -1,4 +1,5 @@
 from fastapi.testclient import TestClient
+import httpx
 
 import app.main as main
 from app.services.retrieval import HybridRetriever
@@ -211,6 +212,71 @@ def test_viewer_cannot_create_or_upload_documents(tmp_path, monkeypatch):
 
     assert create_response.status_code == 403
     assert upload_response.status_code == 403
+
+
+def test_ingest_url_document_is_indexed(monkeypatch, tmp_path):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
+    original_documents = list(main.documents)
+    original_retriever = main.retriever
+    main.documents[:] = []
+    main.retriever = HybridRetriever(main.documents)
+
+    def fake_get(url, follow_redirects, timeout):
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html; charset=utf-8"},
+            content=b"<html><body><h1>Web policy</h1><p>Customer export requires legal approval before sharing.</p></body></html>",
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(main.httpx, "get", fake_get)
+
+    try:
+        response = client.post(
+            "/api/documents/ingest-url",
+            headers={"X-User-Id": "demo-alice"},
+            json={"title": "Web policy", "url": "https://example.com/policy.html"},
+        )
+
+        assert response.status_code == 201
+        document_id = response.json()["id"]
+        hits = main.retriever.search("Who approves customer export?", limit=1)
+        assert hits[0].document_id == document_id
+        assert hits[0].location_label == "HTML 第 2 段"
+    finally:
+        main.documents[:] = original_documents
+        main.retriever = original_retriever
+
+
+def test_viewer_cannot_ingest_url(monkeypatch):
+    response = client.post(
+        "/api/documents/ingest-url",
+        headers={"X-User-Id": "demo-bob"},
+        json={"title": "Read only URL", "url": "https://example.com/policy.html"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_ingest_url_rejects_non_html(monkeypatch):
+    def fake_get(url, follow_redirects, timeout):
+        return httpx.Response(
+            200,
+            headers={"content-type": "application/json"},
+            content=b'{"policy": true}',
+            request=httpx.Request("GET", url),
+        )
+
+    monkeypatch.setattr(main.httpx, "get", fake_get)
+
+    response = client.post(
+        "/api/documents/ingest-url",
+        headers={"X-User-Id": "demo-alice"},
+        json={"title": "JSON policy", "url": "https://example.com/policy.json"},
+    )
+
+    assert response.status_code == 415
 
 
 def test_persist_audit_event_includes_workflow_trace(monkeypatch):

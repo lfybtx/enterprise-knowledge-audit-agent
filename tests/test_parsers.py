@@ -28,7 +28,29 @@ def test_parse_rejects_short_text():
 
 def test_parse_rejects_unsupported_file_type():
     with pytest.raises(UnsupportedFileTypeError):
-        parse_document("policy.html", b"<p>policy</p>")
+        parse_document("policy.exe", b"policy")
+
+
+def test_parse_html_extracts_visible_blocks():
+    file_type, text = parse_document(
+        "policy.html",
+        b"""
+        <html>
+          <head><style>.hidden{display:none}</style><script>alert('skip')</script></head>
+          <body>
+            <h1>Customer export policy</h1>
+            <p>Customer export requires manager approval.</p>
+            <ul><li>Retention cannot exceed seven days.</li></ul>
+          </body>
+        </html>
+        """,
+    )
+
+    assert file_type == "html"
+    assert "[HTML Paragraph 1]" in text
+    assert "Customer export policy" in text
+    assert "manager approval" in text
+    assert "alert" not in text
 
 
 def test_parse_pdf_preserves_page_marker():
