@@ -7,6 +7,7 @@ from time import perf_counter
 from typing import Any, Callable, Iterable
 
 from app.services.audit import AuditFinding, assess
+from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer
 from app.services.retrieval import RetrievedChunk, grounded_answer
 
 
@@ -117,6 +118,25 @@ def _run_sequential_workflow(
 
     start = perf_counter()
     report = build_risk_report(question, evidence, findings)
+    answer = grounded_answer(question, evidence)
+    report_tools = ["build_risk_report"]
+    report_trace_data: dict[str, Any] = {}
+    report_failure_reason = None
+    llm_input_tokens = 0
+    llm_output_tokens = 0
+    try:
+        llm_result = synthesize_answer(question=question, evidence=evidence, findings=findings)
+    except LlmSynthesisError as error:
+        llm_result = None
+        report_failure_reason = str(error)
+        report_trace_data["llm"] = {"status": "fallback", "failure_reason": str(error)}
+    if llm_result is not None:
+        answer = llm_result.answer
+        report["summary"] = llm_result.answer
+        report_tools.append("openai_compatible_chat")
+        report_trace_data["llm"] = llm_result.trace_data
+        llm_input_tokens = llm_result.input_tokens
+        llm_output_tokens = llm_result.output_tokens
     report_prompt = _make_prompt(question, evidence, findings, "report_agent")
     workflow_steps.append(
         WorkflowStep(
@@ -133,16 +153,17 @@ def _run_sequential_workflow(
             detail=f"assembled {len(report['findings'])} report items",
             duration_ms=workflow_steps[-1].duration_ms,
             prompt=report_prompt,
-            tool_calls=["build_risk_report"],
-            input_tokens=_estimate_tokens(report_prompt),
-            output_tokens=max(1, len(report["findings"]) * 48),
-            failure_reason=None,
+            tool_calls=report_tools,
+            input_tokens=_estimate_tokens(report_prompt) + llm_input_tokens,
+            output_tokens=max(1, len(report["findings"]) * 48) + llm_output_tokens,
+            failure_reason=report_failure_reason,
+            trace_data=report_trace_data,
         )
     )
 
     return {
         "trace_id": trace_id,
-        "answer": grounded_answer(question, evidence),
+        "answer": answer,
         "citations": [chunk_to_citation(item, rank=index) for index, item in enumerate(evidence, start=1)],
         "retrieval_diagnostics": retrieval_diagnostics,
         "findings": [finding_to_payload(item) for item in findings],

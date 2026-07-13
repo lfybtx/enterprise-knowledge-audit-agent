@@ -38,6 +38,7 @@ Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 | Retrieval | Keyword score + local vector cosine score; PostgreSQL path supports pgvector |
 | Citations | Title, source path, excerpt, score, and location label |
 | Audit findings | Sensitive export risk, incident response, and legacy-policy conflicts |
+| Optional LLM synthesis | OpenAI-compatible Chat endpoint with strict JSON validation and rule-based fallback |
 | Report export | JSON, Markdown, and Unicode-capable PDF |
 | Audit history | Workflow traces persisted in PostgreSQL when Docker stack is used |
 | Permissions | JWT login with `X-User-Id` demo fallback |
@@ -103,6 +104,12 @@ OPENAI_EMBEDDING_DIMENSIONS=512
 returns the API key. In `openai-compatible` mode, document chunks and search
 queries use the provider's `/embeddings` endpoint. The current database schema
 uses `vector(512)`, so `OPENAI_EMBEDDING_DIMENSIONS` must remain `512`.
+
+When `MODEL_PROVIDER=openai-compatible`, the report agent also calls the
+provider's `/chat/completions` endpoint with `response_format={"type":"json_object"}`.
+The returned JSON must include `answer` and `citations`; invalid output or
+provider errors are recorded in the workflow trace and the app falls back to the
+local evidence-grounded answer.
 
 When switching an existing PostgreSQL database from the old 64-dimensional
 development vectors, run `alembic upgrade head`. The migration recreates the

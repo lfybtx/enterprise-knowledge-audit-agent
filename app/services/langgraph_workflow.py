@@ -8,6 +8,7 @@ from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
 from app.services.audit import AuditFinding, assess
+from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer
 from app.services.retrieval import RetrievedChunk, grounded_answer
 from app.services.workflow import (
     WorkflowStep,
@@ -30,6 +31,7 @@ class AuditGraphState(TypedDict, total=False):
     retrieval_diagnostics: dict[str, Any]
     findings: list[AuditFinding]
     report: dict[str, Any]
+    answer: str
     workflow_steps: list[dict[str, Any]]
     workflow_trace: list[dict[str, Any]]
     approval_status: str
@@ -45,7 +47,7 @@ def run_langgraph_workflow(
     findings = state.get("findings", [])
     return {
         "trace_id": _trace_id(),
-        "answer": grounded_answer(question, evidence),
+        "answer": state.get("answer") or grounded_answer(question, evidence),
         "citations": [chunk_to_citation(item, rank=index) for index, item in enumerate(evidence, start=1)],
         "retrieval_diagnostics": state.get("retrieval_diagnostics", {}),
         "findings": [finding_to_payload(item) for item in findings],
@@ -121,16 +123,41 @@ def _audit_agent(state: AuditGraphState) -> dict[str, Any]:
 def _report_agent(state: AuditGraphState) -> dict[str, Any]:
     start = perf_counter()
     report = build_risk_report(state["question"], state.get("evidence", []), state.get("findings", []))
+    answer = grounded_answer(state["question"], state.get("evidence", []))
+    tools = ["build_risk_report"]
+    trace_data: dict[str, Any] = {}
+    failure_reason = None
+    llm_input_tokens = 0
+    llm_output_tokens = 0
+    try:
+        llm_result = synthesize_answer(
+            question=state["question"],
+            evidence=state.get("evidence", []),
+            findings=state.get("findings", []),
+        )
+    except LlmSynthesisError as error:
+        llm_result = None
+        failure_reason = str(error)
+        trace_data["llm"] = {"status": "fallback", "failure_reason": str(error)}
+    if llm_result is not None:
+        answer = llm_result.answer
+        report["summary"] = llm_result.answer
+        tools.append("openai_compatible_chat")
+        trace_data["llm"] = llm_result.trace_data
+        llm_input_tokens = llm_result.input_tokens
+        llm_output_tokens = llm_result.output_tokens
     prompt = _make_prompt(state["question"], state.get("evidence", []), state.get("findings", []), "report_agent")
     detail = f"assembled {len(report['findings'])} report items"
     return _append_trace(
         state,
         WorkflowStep("report_agent", "completed", detail, _elapsed_ms(start)),
         WorkflowTraceEntry(
-            "report_agent", "completed", detail, _elapsed_ms(start), prompt, ["build_risk_report"],
-            _estimate_tokens(prompt), max(1, len(report["findings"]) * 48), None,
+            "report_agent", "completed", detail, _elapsed_ms(start), prompt, tools,
+            _estimate_tokens(prompt) + llm_input_tokens, max(1, len(report["findings"]) * 48) + llm_output_tokens,
+            failure_reason, trace_data,
         ),
         report=report,
+        answer=answer,
     )
 
 
