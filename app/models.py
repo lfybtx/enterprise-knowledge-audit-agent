@@ -101,6 +101,11 @@ class WorkflowRun(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     step_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    approval_status: Mapped[str] = mapped_column(String(20), nullable=False, default="not_required")
+    review_decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    reviewed_by: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    review_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     steps: Mapped[list[WorkflowTraceStep]] = relationship(

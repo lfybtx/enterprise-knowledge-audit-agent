@@ -213,6 +213,7 @@ function renderAuditHistory(audit) {
     const traceId = event.trace_id || "";
     const hasTrace = Boolean(traceId && event.workflow_trace && event.workflow_trace.length);
     const isSelected = hasTrace && traceId === selectedTraceId;
+    const approvalStatus = event.approval_status || "not_required";
     const label = event.event === "report_exported" ? "导出" : "问答";
     const summary = event.summary || event.question || "暂无摘要";
     return `
@@ -221,8 +222,13 @@ function renderAuditHistory(audit) {
           <strong>${escapeHtml(label)} - ${escapeHtml(event.user_id || currentUserId())}</strong>
           <span>${escapeHtml(summary)}</span>
           <small>${escapeHtml(event.duration_ms ?? 0)} ms - ${escapeHtml(event.step_count ?? 0)} steps</small>
+          <small class="approval-status ${escapeHtml(approvalStatus)}">${escapeHtml(approvalStatusLabel(approvalStatus))}</small>
         </div>
         <div class="audit-item-actions">
+          ${approvalStatus === "pending" ? `
+            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="approved">\u6279\u51c6</button>
+            <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="rejected">\u9a73\u56de</button>
+          ` : ""}
           <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}" ${hasTrace ? "" : "disabled"}>
             ${hasTrace ? "查看 trace" : "暂无 trace"}
           </button>
@@ -250,6 +256,33 @@ function renderAuditHistory(audit) {
       $("#trace").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
+  $("#audit-history").querySelectorAll("button[data-review-trace-id]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      const traceId = button.getAttribute("data-review-trace-id");
+      const decision = button.getAttribute("data-review-decision");
+      button.disabled = true;
+      try {
+        await fetchJson(`/api/audit-runs/${encodeURIComponent(traceId)}/review`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision }),
+        });
+        await refreshOverview();
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+      }
+    });
+  });
+}
+
+function approvalStatusLabel(status) {
+  return {
+    pending: "\u5f85\u4eba\u5de5\u786e\u8ba4",
+    approved: "\u5df2\u6279\u51c6",
+    rejected: "\u5df2\u9a73\u56de",
+    not_required: "\u65e0\u9700\u5ba1\u6838",
+  }[status] || status;
 }
 
 function refreshAuditSelection() {
@@ -296,6 +329,7 @@ function renderResult(payload) {
   $("#empty").hidden = true;
   $("#results").hidden = false;
   $("#answer").textContent = payload.answer;
+  renderApprovalPanel(payload);
   $("#findings").innerHTML = payload.findings.map((finding) => `
     <div class="finding ${finding.level.toLowerCase().includes("high") ? "high" : ""}">
       <h3>${escapeHtml(finding.level)} - ${escapeHtml(finding.title)}</h3>
@@ -320,6 +354,32 @@ function renderResult(payload) {
   selectedTraceId = "";
   lastWorkflowTrace = payload.workflow_trace || [];
   renderTrace(lastWorkflowTrace, `当前流程 trace - ${payload.trace_id}`);
+}
+
+function renderApprovalPanel(payload) {
+  const panel = $("#approval-panel");
+  if (!panel) return;
+  if (payload.approval_status !== "pending") {
+    panel.hidden = true;
+    panel.innerHTML = "";
+    return;
+  }
+  panel.hidden = false;
+  panel.innerHTML = `<div><strong>\u5f85\u4eba\u5de5\u786e\u8ba4</strong><span>\u8be5\u5ba1\u8ba1\u62a5\u544a\u9700\u8981\u8d1f\u8d23\u4eba\u786e\u8ba4\u3002</span></div><div class="approval-actions"><button type="button" class="secondary" id="approve-current-audit">\u6279\u51c6\u62a5\u544a</button><button type="button" class="secondary" id="reject-current-audit">\u9a73\u56de\u62a5\u544a</button></div>`;
+  $("#approve-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "approved"));
+  $("#reject-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "rejected"));
+}
+
+async function reviewCurrentAudit(traceId, decision) {
+  document.querySelectorAll("#approval-panel button").forEach((button) => { button.disabled = true; });
+  try {
+    await fetchJson(`/api/audit-runs/${encodeURIComponent(traceId)}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision }) });
+    $("#approval-panel").innerHTML = `<strong>${decision === "approved" ? "\u5df2\u6279\u51c6" : "\u5df2\u9a73\u56de"}</strong>`;
+    await refreshOverview();
+  } catch (error) {
+    alert(error.message);
+    document.querySelectorAll("#approval-panel button").forEach((button) => { button.disabled = false; });
+  }
 }
 
 async function ask() {

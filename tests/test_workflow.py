@@ -84,3 +84,10 @@ def test_run_audit_workflow_records_empty_retrieval_trace():
 
     assert response["workflow_trace"][0]["status"] == "empty"
     assert response["workflow_trace"][0]["failure_reason"] == "No evidence returned by retrieval stage"
+
+
+def test_sequential_fallback_remains_available_without_langgraph(monkeypatch):
+    monkeypatch.setitem(__import__("sys").modules, "app.services.langgraph_workflow", None)
+    response = run_audit_workflow("No evidence question", lambda _: [])
+
+    assert response["workflow_trace"][0]["name"] == "retrieval_agent"

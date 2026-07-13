@@ -32,6 +32,10 @@ class DatabaseUnavailableError(RuntimeError):
     """Raised when PostgreSQL cannot be used for an application request."""
 
 
+class WorkflowReviewError(RuntimeError):
+    """Raised when a workflow review cannot be applied."""
+
+
 def ensure_user(session: Session, external_id: str, display_name: str | None = None) -> User:
     user = session.scalar(select(User).where(User.external_id == external_id))
     if user is None:
@@ -414,6 +418,7 @@ def persist_workflow_run(
     step_count: int,
     summary: str,
     workflow_trace: Iterable[dict[str, Any]],
+    approval_status: str = "not_required",
 ) -> dict[str, Any]:
     try:
         run = WorkflowRun(
@@ -425,6 +430,7 @@ def persist_workflow_run(
             duration_ms=duration_ms,
             step_count=step_count,
             summary=summary,
+            approval_status=approval_status,
         )
         session.add(run)
         session.flush()
@@ -480,6 +486,43 @@ def load_workflow_trace_records(session: Session, trace_id: str) -> dict[str, An
         raise DatabaseUnavailableError("PostgreSQL is unavailable or its workflow schema has not been migrated") from exc
 
 
+def review_workflow_run(
+    session: Session,
+    *,
+    trace_id: str,
+    user_external_id: str,
+    decision: str,
+    comment: str | None,
+) -> dict[str, Any]:
+    try:
+        run = session.scalar(
+            select(WorkflowRun)
+            .options(selectinload(WorkflowRun.steps))
+            .where(WorkflowRun.trace_id == trace_id)
+        )
+        if run is None:
+            raise WorkflowReviewError("Audit run was not found")
+        if run.user_id != user_external_id:
+            raise WorkflowReviewError("You cannot review another user's audit run")
+        if run.approval_status != "pending":
+            raise WorkflowReviewError("This audit run is not awaiting human review")
+        run.approval_status = decision
+        run.review_decision = decision
+        run.reviewed_by = user_external_id
+        run.review_comment = comment
+        run.reviewed_at = func.now()
+        run.status = "completed" if decision == "approved" else "rejected"
+        session.commit()
+        session.refresh(run)
+        return workflow_run_to_record(run)
+    except WorkflowReviewError:
+        session.rollback()
+        raise
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to save workflow review") from exc
+
+
 def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
     ordered_steps = sorted(run.steps, key=lambda item: item.step_index)
     return {
@@ -491,6 +534,11 @@ def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
         "duration_ms": run.duration_ms,
         "step_count": run.step_count,
         "summary": run.summary,
+        "approval_status": run.approval_status,
+        "review_decision": run.review_decision,
+        "reviewed_by": run.reviewed_by,
+        "review_comment": run.review_comment,
+        "reviewed_at": run.reviewed_at.isoformat() if run.reviewed_at else None,
         "created_at": run.created_at.isoformat() if run.created_at else None,
         "workflow_trace": [
             {

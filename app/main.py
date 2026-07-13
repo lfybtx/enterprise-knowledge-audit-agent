@@ -82,6 +82,11 @@ class ReportExportRequest(BaseModel):
     export_format: str = Field(default="markdown", pattern="^(json|markdown|pdf)$")
 
 
+class WorkflowReviewRequest(BaseModel):
+    decision: str = Field(pattern="^(approved|rejected)$")
+    comment: Optional[str] = Field(default=None, max_length=500)
+
+
 def load_seed_documents() -> list[dict[str, Any]]:
     with DOCUMENTS_PATH.open(encoding="utf-8") as file:
         return json.load(file)
@@ -342,11 +347,12 @@ def persist_audit_event(
                         user_external_id=user_external_id,
                         event_type=event_type,
                         question=question,
-                        status="completed",
+                        status="pending_review" if response.get("approval_status") == "pending" else "completed",
                         duration_ms=trace_duration_ms,
                         step_count=len(response["workflow_trace"]),
                         summary=str(summary),
                         workflow_trace=list(response["workflow_trace"]),
+                        approval_status=str(response.get("approval_status", "not_required")),
                     )
                     return
                 except DatabaseUnavailableError:
@@ -363,6 +369,7 @@ def persist_audit_event(
         "duration_ms": trace_duration_ms,
         "step_count": len(response["workflow_trace"]),
         "workflow_trace": response["workflow_trace"],
+        "approval_status": response.get("approval_status", "not_required"),
     }
     if event_type == "question_answered":
         event_payload.update(
@@ -533,6 +540,44 @@ def get_audit_log(user_external_id: Optional[str] = Header(default=None, alias=U
         return persisted_audit_log
     visible_events = [event for event in audit_log if event.get("user_id", DEFAULT_USER_ID) == user_external_id]
     return visible_events[-50:]
+
+
+@app.post("/api/audit-runs/{trace_id}/review")
+def review_audit_run(
+    trace_id: str,
+    payload: WorkflowReviewRequest,
+    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
+) -> dict[str, Any]:
+    user_external_id = require_user_id(user_external_id)
+    if DEMO_USER_ROLES[user_external_id] not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Current role cannot review audit runs")
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Workflow reviews require PostgreSQL")
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import (
+            DatabaseUnavailableError,
+            WorkflowReviewError,
+            review_workflow_run,
+        )
+
+        session = get_session_factory()()
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Workflow review storage is unavailable") from error
+    try:
+        return review_workflow_run(
+            session,
+            trace_id=trace_id,
+            user_external_id=user_external_id,
+            decision=payload.decision,
+            comment=payload.comment,
+        )
+    except WorkflowReviewError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except DatabaseUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    finally:
+        session.close()
 
 
 @app.get("/api/evaluation-results")

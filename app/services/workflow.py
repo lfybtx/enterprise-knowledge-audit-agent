@@ -46,7 +46,7 @@ def _make_prompt(question: str, evidence: list[RetrievedChunk], findings: list[A
     return f"Question: {question}\nFindings: {titles}\nEvidence count: {len(evidence)}"
 
 
-def run_audit_workflow(
+def _run_sequential_workflow(
     question: str,
     evidence_loader: Callable[[str], list[RetrievedChunk] | tuple[list[RetrievedChunk], dict[str, Any]]],
 ) -> dict[str, Any]:
@@ -150,6 +150,18 @@ def run_audit_workflow(
         "workflow_steps": [step.__dict__ for step in workflow_steps],
         "workflow_trace": [entry.__dict__ for entry in workflow_trace],
     }
+
+
+def run_audit_workflow(
+    question: str,
+    evidence_loader: Callable[[str], list[RetrievedChunk] | tuple[list[RetrievedChunk], dict[str, Any]]],
+) -> dict[str, Any]:
+    """Run the LangGraph workflow, with a local fallback for minimal dev installs."""
+    try:
+        from app.services.langgraph_workflow import run_langgraph_workflow
+    except ImportError:
+        return _run_sequential_workflow(question, evidence_loader)
+    return run_langgraph_workflow(question, evidence_loader)
 
 
 def build_risk_report(
