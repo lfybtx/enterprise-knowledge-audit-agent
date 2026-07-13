@@ -30,7 +30,7 @@ def finding():
 
 
 def test_local_provider_skips_remote_synthesis(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "local-hf")
+    monkeypatch.delenv("CHAT_PROVIDER", raising=False)
 
     result = synthesize_answer(question="Can I export customers?", evidence=[evidence_chunk()], findings=[finding()])
 
@@ -38,10 +38,10 @@ def test_local_provider_skips_remote_synthesis(monkeypatch):
 
 
 def test_openai_compatible_synthesis_parses_strict_json(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "openai-compatible")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
-    monkeypatch.setenv("OPENAI_BASE_URL", "http://llm.local/v1")
-    monkeypatch.setenv("OPENAI_CHAT_MODEL", "test-chat")
+    monkeypatch.setenv("CHAT_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("CHAT_OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("CHAT_OPENAI_BASE_URL", "http://llm.local/v1")
+    monkeypatch.setenv("CHAT_OPENAI_MODEL", "test-chat")
 
     def fake_post(url, headers, json, timeout):
         assert url == "http://llm.local/v1/chat/completions"
@@ -74,8 +74,8 @@ def test_openai_compatible_synthesis_parses_strict_json(monkeypatch):
 
 
 def test_openai_compatible_synthesis_rejects_invalid_json(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "openai-compatible")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("CHAT_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("CHAT_OPENAI_API_KEY", "test-key")
 
     def fake_post(url, headers, json, timeout):
         return httpx.Response(
@@ -91,8 +91,8 @@ def test_openai_compatible_synthesis_rejects_invalid_json(monkeypatch):
 
 
 def test_workflow_falls_back_when_remote_synthesis_fails(monkeypatch):
-    monkeypatch.setenv("MODEL_PROVIDER", "openai-compatible")
-    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setenv("CHAT_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("CHAT_OPENAI_API_KEY", "test-key")
 
     def fake_post(url, headers, json, timeout):
         raise httpx.ConnectError("offline", request=httpx.Request("POST", url))

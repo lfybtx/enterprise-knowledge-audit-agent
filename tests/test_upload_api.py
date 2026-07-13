@@ -18,12 +18,17 @@ def test_list_documents_returns_numeric_chunk_count():
 def test_model_config_does_not_expose_api_key(monkeypatch):
     monkeypatch.setenv("MODEL_PROVIDER", "openai-compatible")
     monkeypatch.setenv("OPENAI_API_KEY", "secret-value")
+    monkeypatch.setenv("CHAT_PROVIDER", "openai-compatible")
+    monkeypatch.setenv("CHAT_OPENAI_API_KEY", "chat-secret-value")
 
     response = client.get("/api/model-config")
+    payload = response.json()
 
     assert response.status_code == 200
-    assert response.json()["provider"] == "openai-compatible"
+    assert payload["embedding"]["provider"] == "openai-compatible"
+    assert payload["chat"]["provider"] == "openai-compatible"
     assert "secret-value" not in response.text
+    assert "chat-secret-value" not in response.text
 
 
 def test_protected_endpoints_require_user_header():

@@ -7,7 +7,7 @@ from typing import Any, Optional
 import httpx
 
 from app.services.audit import AuditFinding
-from app.services.model_provider import OPENAI_COMPATIBLE_PROVIDER, ModelConfigurationError, ModelProviderSettings
+from app.services.model_provider import ChatProviderSettings, OPENAI_COMPATIBLE_PROVIDER, ModelConfigurationError
 from app.services.retrieval import RetrievedChunk
 
 
@@ -35,7 +35,7 @@ def synthesize_answer(
     fully offline and deterministic.
     """
     try:
-        settings = ModelProviderSettings.from_environment()
+        settings = ChatProviderSettings.from_environment()
     except ModelConfigurationError as error:
         raise LlmSynthesisError(str(error)) from error
 

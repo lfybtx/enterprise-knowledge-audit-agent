@@ -66,7 +66,8 @@ python -m pip install -r requirements-db.txt
 
 ### Model Provider Modes
 
-The default `.env` setting is `MODEL_PROVIDER=local-hf`. It downloads the
+The embedding provider and chat provider are configured separately. The default
+`.env` setting is `MODEL_PROVIDER=local-hf`. It downloads the
 open-source `BAAI/bge-small-zh-v1.5` embedding model and
 `BAAI/bge-reranker-base` reranker into `data/models` on first use, then runs
 locally without an API key. This is the recommended mode for Chinese
@@ -88,28 +89,55 @@ After the image is built, download and cache the model explicitly with:
 docker compose run --rm app python scripts/download_local_model.py
 ```
 
-To prepare for an OpenAI-compatible provider, update `.env` without committing
-the key:
+To use a local chat LLM with Ollama, keep local embeddings enabled and turn on
+the chat provider only:
+
+```powershell
+ollama pull qwen2.5:7b-instruct
+```
+
+```env
+MODEL_PROVIDER=local-hf
+CHAT_PROVIDER=openai-compatible
+CHAT_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
+CHAT_OPENAI_API_KEY=ollama
+CHAT_OPENAI_MODEL=qwen2.5:7b-instruct
+```
+
+For LM Studio, start the local OpenAI-compatible server and use:
+
+```env
+MODEL_PROVIDER=local-hf
+CHAT_PROVIDER=openai-compatible
+CHAT_OPENAI_BASE_URL=http://host.docker.internal:1234/v1
+CHAT_OPENAI_API_KEY=lm-studio
+CHAT_OPENAI_MODEL=<loaded-model-id>
+```
+
+`host.docker.internal` lets the Docker container reach Ollama or LM Studio
+running on the Windows host. If the chat provider is unavailable or returns
+invalid JSON, the workflow records the failure in the trace and falls back to
+the local evidence-grounded answer.
+
+To use a remote OpenAI-compatible embedding provider, update `.env` without
+committing the key:
 
 ```env
 MODEL_PROVIDER=openai-compatible
 OPENAI_API_KEY=your_api_key
 OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_CHAT_MODEL=gpt-4.1-mini
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 OPENAI_EMBEDDING_DIMENSIONS=512
 ```
 
-`GET /api/model-config` shows the active provider and model names but never
-returns the API key. In `openai-compatible` mode, document chunks and search
-queries use the provider's `/embeddings` endpoint. The current database schema
-uses `vector(512)`, so `OPENAI_EMBEDDING_DIMENSIONS` must remain `512`.
-
-When `MODEL_PROVIDER=openai-compatible`, the report agent also calls the
-provider's `/chat/completions` endpoint with `response_format={"type":"json_object"}`.
-The returned JSON must include `answer` and `citations`; invalid output or
-provider errors are recorded in the workflow trace and the app falls back to the
-local evidence-grounded answer.
+`GET /api/model-config` shows active embedding and chat provider details but
+never returns API keys. In `MODEL_PROVIDER=openai-compatible` mode, document
+chunks and search queries use the provider's `/embeddings` endpoint. The current
+database schema uses `vector(512)`, so `OPENAI_EMBEDDING_DIMENSIONS` must remain
+`512`. In `CHAT_PROVIDER=openai-compatible` mode, the report agent calls the
+chat provider's `/chat/completions` endpoint with
+`response_format={"type":"json_object"}`. The returned JSON must include
+`answer` and `citations`.
 
 When switching an existing PostgreSQL database from the old 64-dimensional
 development vectors, run `alembic upgrade head`. The migration recreates the

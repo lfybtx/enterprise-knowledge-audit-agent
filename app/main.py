@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from app.services.chunking import build_chunks
 from app.services.auth import AuthError, account_by_user_id, authenticate_demo_user, create_access_token, verify_access_token
-from app.services.model_provider import ModelConfigurationError, ModelProviderSettings
+from app.services.model_provider import ChatProviderSettings, ModelConfigurationError, ModelProviderSettings
 from app.services.object_storage import ObjectStorageError, store_upload
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
 from app.services.report_export import export_report
@@ -466,14 +466,21 @@ def health() -> dict[str, object]:
         model_status = ModelProviderSettings.from_environment().public_status()
     except ModelConfigurationError as error:
         model_status = {"provider": "invalid", "remote_enabled": False, "configuration_error": str(error)}
-    return {"status": "ok", "document_count": len(documents), "model": model_status}
+    try:
+        chat_status = ChatProviderSettings.from_environment().public_status()
+    except ModelConfigurationError as error:
+        chat_status = {"provider": "invalid", "remote_enabled": False, "configuration_error": str(error)}
+    return {"status": "ok", "document_count": len(documents), "model": model_status, "chat": chat_status}
 
 
 @app.get("/api/model-config")
 def get_model_config() -> dict[str, object]:
     """Expose active model mode without ever returning the API key."""
     try:
-        return ModelProviderSettings.from_environment().public_status()
+        return {
+            "embedding": ModelProviderSettings.from_environment().public_status(),
+            "chat": ChatProviderSettings.from_environment().public_status(),
+        }
     except ModelConfigurationError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
 

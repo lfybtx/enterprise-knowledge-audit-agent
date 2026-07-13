@@ -17,6 +17,8 @@ SUPPORTED_PROVIDERS = {LOCAL_PROVIDER, LOCAL_HF_PROVIDER, OPENAI_COMPATIBLE_PROV
 DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
 DEFAULT_EMBEDDING_DIMENSIONS = 512
 DEFAULT_LOCAL_EMBEDDING_MODEL = "BAAI/bge-small-zh-v1.5"
+DEFAULT_LOCAL_CHAT_BASE_URL = "http://host.docker.internal:11434/v1"
+DEFAULT_LOCAL_CHAT_MODEL = "qwen2.5:7b-instruct"
 
 
 class ModelConfigurationError(ValueError):
@@ -80,6 +82,42 @@ class ModelProviderSettings:
             "chat_model": self.chat_model,
             "embedding_model": self.embedding_model,
             "embedding_dimensions": self.embedding_dimensions,
+        }
+
+
+@dataclass(frozen=True)
+class ChatProviderSettings:
+    provider: str
+    api_key: str | None
+    base_url: str | None
+    chat_model: str | None
+
+    @classmethod
+    def from_environment(cls) -> "ChatProviderSettings":
+        provider = os.getenv("CHAT_PROVIDER", LOCAL_PROVIDER).strip().lower()
+        if provider not in {LOCAL_PROVIDER, OPENAI_COMPATIBLE_PROVIDER}:
+            raise ModelConfigurationError("CHAT_PROVIDER must be one of: local, openai-compatible")
+        if provider == LOCAL_PROVIDER:
+            return cls(provider=provider, api_key=None, base_url=None, chat_model=None)
+
+        base_url = os.getenv("CHAT_OPENAI_BASE_URL", DEFAULT_LOCAL_CHAT_BASE_URL).strip().rstrip("/")
+        api_key = os.getenv("CHAT_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY", "ollama")).strip()
+        if not api_key:
+            raise ModelConfigurationError("CHAT_OPENAI_API_KEY is required when CHAT_PROVIDER=openai-compatible")
+        return cls(
+            provider=provider,
+            api_key=api_key,
+            base_url=base_url,
+            chat_model=os.getenv("CHAT_OPENAI_MODEL", DEFAULT_LOCAL_CHAT_MODEL).strip(),
+        )
+
+    def public_status(self) -> dict[str, object]:
+        return {
+            "provider": self.provider,
+            "remote_enabled": self.provider == OPENAI_COMPATIBLE_PROVIDER,
+            "base_url": self.base_url,
+            "chat_model": self.chat_model,
+            "local_endpoint": bool(self.base_url and ("localhost" in self.base_url or "host.docker.internal" in self.base_url)),
         }
 
 
