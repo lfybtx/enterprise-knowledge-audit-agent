@@ -65,10 +65,11 @@ python -m pip install -r requirements-db.txt
 ### Model Provider Modes
 
 The default `.env` setting is `MODEL_PROVIDER=local-hf`. It downloads the
-open-source `BAAI/bge-small-zh-v1.5` embedding model into `data/models` on its
-first use, then runs locally without an API key. This is the recommended mode
-for Chinese enterprise-document retrieval. Use `MODEL_PROVIDER=local` only for
-the deterministic, dependency-free test fallback.
+open-source `BAAI/bge-small-zh-v1.5` embedding model and
+`BAAI/bge-reranker-base` reranker into `data/models` on first use, then runs
+locally without an API key. This is the recommended mode for Chinese
+enterprise-document retrieval. Use `MODEL_PROVIDER=local` only for the
+deterministic, dependency-free test fallback.
 
 For a host-side Windows run, install the CPU runtime first, then the local
 model dependency:

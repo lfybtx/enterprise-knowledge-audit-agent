@@ -98,3 +98,27 @@ def test_local_hf_model_download_uses_configured_model(monkeypatch):
 
     assert download_local_embedding_model() == "BAAI/bge-small-zh-v1.5"
     assert captured["model_name"] == "BAAI/bge-small-zh-v1.5"
+
+
+def test_sentence_transformer_uses_hugging_face_cache_directory(monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    monkeypatch.setenv("MODEL_CACHE_DIR", "/app/data/models")
+    monkeypatch.delenv("HF_HOME", raising=False)
+    captured = {}
+
+    class FakeSentenceTransformer:
+        def __init__(self, model_name, **kwargs):
+            captured["model_name"] = model_name
+            captured["kwargs"] = kwargs
+
+    monkeypatch.setitem(sys.modules, "sentence_transformers", SimpleNamespace(SentenceTransformer=FakeSentenceTransformer))
+    from app.services.embeddings import _load_local_sentence_transformer
+
+    _load_local_sentence_transformer.cache_clear()
+    _load_local_sentence_transformer("test-embedding")
+
+    assert captured["kwargs"]["cache_folder"] == "/app/data/models"
+    assert __import__("os").environ["HF_HOME"] == "/app/data/models"
+    _load_local_sentence_transformer.cache_clear()

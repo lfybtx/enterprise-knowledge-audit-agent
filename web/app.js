@@ -141,8 +141,27 @@ function renderTrace(trace, title = "工作流 trace") {
           <span>Tokens: in ${step.input_tokens}, out ${step.output_tokens}</span>
           <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
         </div>
+        ${renderRetrievalCandidates(step.trace_data?.retrieval)}
       </div>
     `).join("")}
+  `;
+}
+
+function renderRetrievalCandidates(retrieval) {
+  const candidates = retrieval?.candidate_ranking;
+  if (!Array.isArray(candidates) || !candidates.length) return "";
+  return `
+    <div class="retrieval-candidates">
+      <h4>候选重排明细</h4>
+      ${candidates.map((candidate) => `
+        <div class="candidate-row ${candidate.decision === "selected" ? "selected" : "discarded"}">
+          <strong>${candidate.decision === "selected" ? "入选" : "淘汰"}</strong>
+          <span>${escapeHtml(candidate.title)}</span>
+          <small>融合 #${escapeHtml(candidate.fusion_rank)} | 最终 ${candidate.final_rank ? `#${escapeHtml(candidate.final_rank)}` : "未入选"} | 重排 ${escapeHtml(candidate.rerank_score ?? "未执行")}</small>
+          <small>${escapeHtml(candidate.reason)}</small>
+        </div>
+      `).join("")}
+    </div>
   `;
 }
 
@@ -289,6 +308,13 @@ function renderResult(payload) {
       <h3>证据 ${index + 1} - ${escapeHtml(citation.title)} <small>(${citation.score})</small></h3>
       <p>${escapeHtml(citation.excerpt)}</p>
       <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
+      <div class="retrieval-scores">
+        <span>最终排名 ${escapeHtml(citation.selected_rank ?? index + 1)}</span>
+        <span>关键词 ${escapeHtml(citation.lexical_score ?? "-")}</span>
+        <span>向量 ${escapeHtml(citation.semantic_score ?? "-")}</span>
+        <span>融合 ${escapeHtml(citation.fusion_score ?? "-")}</span>
+        <span>重排 ${escapeHtml(citation.rerank_score ?? "未执行")}</span>
+      </div>
     </div>
   `).join("");
   selectedTraceId = "";

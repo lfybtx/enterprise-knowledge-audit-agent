@@ -70,3 +70,4 @@ def test_workflow_trace_models_have_expected_fields():
     assert "workflow_run_id" in WorkflowTraceStep.__table__.columns
     assert "prompt" in WorkflowTraceStep.__table__.columns
     assert "tool_calls" in WorkflowTraceStep.__table__.columns
+    assert "trace_data" in WorkflowTraceStep.__table__.columns

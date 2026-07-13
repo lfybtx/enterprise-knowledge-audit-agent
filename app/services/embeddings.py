@@ -154,13 +154,15 @@ def _bge_query_instruction(text: str) -> str:
 
 @lru_cache(maxsize=2)
 def _load_local_sentence_transformer(model_name: str):
+    cache_dir = os.getenv("MODEL_CACHE_DIR") or None
+    if cache_dir:
+        os.environ.setdefault("HF_HOME", cache_dir)
     try:
         from sentence_transformers import SentenceTransformer
     except ImportError as error:
         raise EmbeddingProviderError(
             "Local embedding dependencies are missing. Install requirements-local-models.txt or rebuild the Docker image."
         ) from error
-    cache_dir = os.getenv("MODEL_CACHE_DIR") or None
     try:
         return SentenceTransformer(model_name, cache_folder=cache_dir)
     except Exception as error:

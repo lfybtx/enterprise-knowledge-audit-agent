@@ -22,6 +22,9 @@ def test_run_evaluation_writes_summary_file(tmp_path):
     assert payload["summary"]["total"] == 50
     assert 0 <= payload["summary"]["recall_at_1"] <= 1
     assert 0 <= payload["summary"]["citation_accuracy"] <= 1
+    assert "fusion_baseline" in payload["comparison"]
+    assert "reranked" in payload["comparison"]
+    assert payload["summary"]["average_latency_ms"] >= 0
     assert payload["outcomes"][0]["actual_document_ids"]
     assert "Recall@1" in report_path.read_text(encoding="utf-8")
 

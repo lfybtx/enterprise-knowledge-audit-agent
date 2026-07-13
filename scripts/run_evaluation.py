@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from time import perf_counter
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.services.retrieval import HybridRetriever, grounded_answer  # noqa: E402
+from app.services.reranking import rerank_candidates  # noqa: E402
 
 
 DEFAULT_CASES_PATH = ROOT / "data" / "evaluation_cases.json"
@@ -30,8 +32,7 @@ def write_json(path: Path, payload: Any) -> None:
         file.write("\n")
 
 
-def evaluate_case(retriever: HybridRetriever, case: dict[str, Any]) -> dict[str, Any]:
-    results = retriever.search(case["question"], limit=3)
+def evaluate_case(results: list[Any], case: dict[str, Any], latency_ms: float) -> dict[str, Any]:
     top = results[0] if results else None
     expected_document_id = case["expected_document_id"]
     expected_location_kind = case.get("expected_location_kind")
@@ -54,6 +55,8 @@ def evaluate_case(retriever: HybridRetriever, case: dict[str, Any]) -> dict[str,
             and (expected_location_kind is None or top.location.get("kind") == expected_location_kind)
         ),
         "answer_quality_passed": bool(results and citation_marker_present and "No searchable evidence" not in answer),
+        "latency_ms": round(latency_ms, 2),
+        "failed": not bool(results),
     }
 
 
@@ -66,27 +69,58 @@ def summarize(outcomes: list[dict[str, Any]]) -> dict[str, Any]:
             "recall_at_3": 0.0,
             "citation_accuracy": 0.0,
             "answer_quality_rate": 0.0,
+            "average_latency_ms": 0.0,
+            "p95_latency_ms": 0.0,
+            "failure_rate": 0.0,
         }
 
     def rate(key: str) -> float:
         return round(sum(1 for item in outcomes if item[key]) / total, 4)
 
+    latencies = sorted(item["latency_ms"] for item in outcomes)
+    p95_index = min(len(latencies) - 1, max(0, int(len(latencies) * 0.95) - 1))
     return {
         "total": total,
         "recall_at_1": rate("recall_at_1"),
         "recall_at_3": rate("recall_at_3"),
         "citation_accuracy": rate("citation_correct"),
         "answer_quality_rate": rate("answer_quality_passed"),
+        "average_latency_ms": round(sum(latencies) / total, 2),
+        "p95_latency_ms": latencies[p95_index],
+        "failure_rate": rate("failed"),
     }
+
+
+def _evaluate_pipeline(cases: list[dict[str, Any]], search: Any) -> list[dict[str, Any]]:
+    outcomes = []
+    for case in cases:
+        start = perf_counter()
+        try:
+            results = search(case["question"])
+        except Exception:
+            results = []
+        outcomes.append(evaluate_case(results, case, (perf_counter() - start) * 1000))
+    return outcomes
 
 
 def run_evaluation(cases_path: Path, results_path: Path) -> dict[str, Any]:
     documents = load_json(ROOT / "app" / "data" / "sample_documents.json")
     cases = load_json(cases_path)
     retriever = HybridRetriever(documents)
-    outcomes = [evaluate_case(retriever, case) for case in cases]
-    summary = summarize(outcomes)
-    payload = {"summary": summary, "outcomes": outcomes}
+    fusion_outcomes = _evaluate_pipeline(cases, lambda question: retriever.search(question, limit=20)[:3])
+    reranked_outcomes = _evaluate_pipeline(
+        cases,
+        lambda question: rerank_candidates(question, retriever.search(question, limit=20))[:3],
+    )
+    summary = summarize(reranked_outcomes)
+    payload = {
+        "summary": summary,
+        "outcomes": reranked_outcomes,
+        "comparison": {
+            "fusion_baseline": summarize(fusion_outcomes),
+            "reranked": summary,
+        },
+    }
     write_json(results_path, payload)
     return payload
 
@@ -99,6 +133,9 @@ def print_report(payload: dict[str, Any], results_path: Path) -> None:
     print(f"- Recall@3: {summary['recall_at_3']:.1%}")
     print(f"- Citation accuracy: {summary['citation_accuracy']:.1%}")
     print(f"- Answer quality pass rate: {summary['answer_quality_rate']:.1%}")
+    print(f"- Average latency: {summary['average_latency_ms']:.2f} ms")
+    print(f"- P95 latency: {summary['p95_latency_ms']:.2f} ms")
+    print(f"- Failure rate: {summary['failure_rate']:.1%}")
     print(f"- Results file: {results_path}")
 
     failures = [item for item in payload["outcomes"] if not item["recall_at_1"]]
@@ -113,6 +150,7 @@ def print_report(payload: dict[str, Any], results_path: Path) -> None:
 
 def render_markdown_report(payload: dict[str, Any], results_path: Path, cases_path: Path) -> str:
     summary = payload["summary"]
+    comparison = payload.get("comparison", {})
     failures = [item for item in payload["outcomes"] if not item["recall_at_1"]]
     display_results_path = results_path.resolve().relative_to(ROOT) if results_path.resolve().is_relative_to(ROOT) else results_path
     display_cases_path = cases_path.resolve().relative_to(ROOT) if cases_path.resolve().is_relative_to(ROOT) else cases_path
@@ -126,9 +164,27 @@ def render_markdown_report(payload: dict[str, Any], results_path: Path, cases_pa
         f"- Recall@3: {summary['recall_at_3']:.1%}",
         f"- Citation accuracy: {summary['citation_accuracy']:.1%}",
         f"- Answer quality pass rate: {summary['answer_quality_rate']:.1%}",
+        f"- Average latency: {summary['average_latency_ms']:.2f} ms",
+        f"- P95 latency: {summary['p95_latency_ms']:.2f} ms",
+        f"- Failure rate: {summary['failure_rate']:.1%}",
         "",
-        "## Top Recall@1 failures",
+        "## Fusion And Reranker Comparison",
+        "",
+        "| Pipeline | Recall@1 | Recall@3 | Citation accuracy | Avg latency | P95 latency | Failure rate |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
     ]
+    for name, result in comparison.items():
+        lines.append(
+            f"| {name} | {result['recall_at_1']:.1%} | {result['recall_at_3']:.1%} | "
+            f"{result['citation_accuracy']:.1%} | {result['average_latency_ms']:.2f} ms | "
+            f"{result['p95_latency_ms']:.2f} ms | {result['failure_rate']:.1%} |"
+        )
+    lines.extend(
+        [
+            "",
+        "## Top Recall@1 failures",
+        ]
+    )
     if failures:
         for item in failures[:10]:
             lines.append(
@@ -145,6 +201,7 @@ def render_markdown_report(payload: dict[str, Any], results_path: Path, cases_pa
             "- `Recall@3` checks whether the expected document appears in the top three results.",
             "- `Citation accuracy` checks whether the top result also matches the expected location kind.",
             "- `Answer quality` checks whether the grounded answer contains evidence markers and does not fall back to the no-evidence path.",
+            "- The comparison uses the same top-20 fusion candidates, with the reranked pipeline applying the local cross-encoder before selecting top three.",
         ]
     )
     return "\n".join(lines) + "\n"

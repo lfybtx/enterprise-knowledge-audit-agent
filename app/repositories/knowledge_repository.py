@@ -18,6 +18,7 @@ from app.models import (
     WorkflowTraceStep,
 )
 from app.services.embeddings import embed_query, embed_text, embed_texts
+from app.services.reranking import rerank_candidates
 from app.services.retrieval import HybridRetriever, RetrievedChunk
 from app.vector_utils import vector_literal
 
@@ -220,11 +221,34 @@ def hybrid_search_chunks(
     user_external_id: str | None = None,
 ) -> list[RetrievedChunk]:
     """Search persisted chunks with lexical scoring plus pgvector cosine similarity."""
+    results, _ = hybrid_search_chunks_with_diagnostics(session, question, limit, user_external_id)
+    return results
+
+
+def hybrid_search_chunks_with_diagnostics(
+    session: Session,
+    question: str,
+    limit: int = 3,
+    user_external_id: str | None = None,
+) -> tuple[list[RetrievedChunk], dict[str, object]]:
+    """Search with score-stage counts for workflow observability."""
     try:
         documents = load_document_records(session, user_external_id)
-        lexical_hits = HybridRetriever(documents).search(question, limit=limit * 4)
-        semantic_hits = semantic_search_chunks(session, question, limit=limit * 4, user_external_id=user_external_id)
-        return merge_search_results(lexical_hits, semantic_hits, limit)
+        candidate_limit = max(20, limit * 6)
+        lexical_hits = HybridRetriever(documents).search(question, limit=candidate_limit)
+        semantic_hits = semantic_search_chunks(session, question, limit=candidate_limit, user_external_id=user_external_id)
+        fused_hits = merge_search_results(lexical_hits, semantic_hits, candidate_limit)
+        reranked_candidates = rerank_candidates(question, fused_hits)
+        final_hits = reranked_candidates[:limit]
+        return final_hits, {
+            "mode": "keyword + pgvector + fusion + reranker",
+            "lexical_candidates": len(lexical_hits),
+            "semantic_candidates": len(semantic_hits),
+            "fused_candidates": len(fused_hits),
+            "selected_candidates": len(final_hits),
+            "reranker_applied": any(hit.rerank_score is not None for hit in final_hits),
+            "candidate_ranking": _candidate_ranking(fused_hits, reranked_candidates, limit),
+        }
     except SQLAlchemyError as exc:
         session.rollback()
         raise DatabaseUnavailableError("PostgreSQL vector search is unavailable") from exc
@@ -313,9 +337,41 @@ def merge_search_results(
                 text=hit.text,
                 location=hit.location,
                 score=round(combined_score, 4),
+                lexical_score=round(lexical_score, 4),
+                semantic_score=round(semantic_score, 4),
+                fusion_score=round(combined_score, 4),
             )
         )
     return sorted(ranked, key=lambda item: item.score, reverse=True)[:limit]
+
+
+def _candidate_ranking(
+    fused_hits: list[RetrievedChunk], reranked_candidates: list[RetrievedChunk], limit: int
+) -> list[dict[str, object]]:
+    fusion_ranks = {chunk.chunk_id: rank for rank, chunk in enumerate(fused_hits, start=1)}
+    return [
+        {
+            "chunk_id": chunk.chunk_id,
+            "title": chunk.title,
+            "fusion_rank": fusion_ranks[chunk.chunk_id],
+            "final_rank": rank if rank <= limit else None,
+            "lexical_score": chunk.lexical_score,
+            "semantic_score": chunk.semantic_score,
+            "fusion_score": chunk.fusion_score,
+            "rerank_score": chunk.rerank_score,
+            "decision": "selected" if rank <= limit else "discarded",
+            "reason": (
+                "Selected in final Top K after reranking"
+                if rank <= limit and chunk.rerank_score is not None
+                else "Selected by fusion fallback"
+                if rank <= limit
+                else f"Outside final Top {limit} after reranking"
+                if chunk.rerank_score is not None
+                else f"Outside final Top {limit} by fusion fallback"
+            ),
+        }
+        for rank, chunk in enumerate(reranked_candidates, start=1)
+    ]
 
 
 def database_is_ready(session: Session) -> bool:
@@ -386,6 +442,7 @@ def persist_workflow_run(
                     input_tokens=int(step["input_tokens"]),
                     output_tokens=int(step["output_tokens"]),
                     failure_reason=step.get("failure_reason"),
+                    trace_data=dict(step.get("trace_data", {})),
                 )
             )
         session.commit()
@@ -446,6 +503,7 @@ def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
                 "input_tokens": step.input_tokens,
                 "output_tokens": step.output_tokens,
                 "failure_reason": step.failure_reason,
+                "trace_data": step.trace_data,
             }
             for step in ordered_steps
         ],

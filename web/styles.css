@@ -168,12 +168,22 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .citation h3 { font-size: 15px; margin: 0 0 7px; }
 .citation p { color: #475569; line-height: 1.55; font-size: 14px; }
 .source { color: #64748b; font-size: 12px; margin-top: 7px; }
+.retrieval-scores { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; color: #475569; font-size: 12px; }
+.retrieval-scores span { background: #f1f5f9; border: 1px solid #dbe4ee; border-radius: 4px; padding: 3px 6px; }
 .trace { margin-top: 20px; }
 .trace-item { border-top: 1px solid #e2e8f0; padding: 12px 0; }
 .trace-item:first-child { border-top: 0; padding-top: 0; }
 .trace-item h3 { font-size: 15px; margin: 0 0 7px; }
 .trace-item p { color: #475569; line-height: 1.55; font-size: 14px; }
 .trace-meta { display: grid; gap: 4px; color: #64748b; font-size: 12px; margin-top: 8px; }
+.retrieval-candidates { margin-top: 12px; border-top: 1px dashed #cbd5e1; padding-top: 10px; }
+.retrieval-candidates h4 { font-size: 13px; margin: 0 0 8px; color: #334155; }
+.candidate-row { display: grid; grid-template-columns: 40px 1fr; gap: 3px 8px; padding: 7px 0; border-top: 1px solid #eef2f7; font-size: 12px; }
+.candidate-row strong { font-weight: 600; }
+.candidate-row.selected strong { color: #16735a; }
+.candidate-row.discarded strong { color: #94a3b8; }
+.candidate-row span { color: #334155; overflow-wrap: anywhere; }
+.candidate-row small { grid-column: 2; color: #64748b; }
 .trace-head h3 { font-size: 16px; margin: 0 0 10px; }
 .audit-history {
   margin-top: 20px;

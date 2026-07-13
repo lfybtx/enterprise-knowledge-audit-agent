@@ -272,10 +272,18 @@ def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> 
 
 
 def search_user_evidence(question: str, user_external_id: str):
+    return search_user_evidence_with_diagnostics(question, user_external_id)[0]
+
+
+def search_user_evidence_with_diagnostics(question: str, user_external_id: str):
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
-            from app.repositories.knowledge_repository import DatabaseUnavailableError, database_is_ready, hybrid_search_chunks
+            from app.repositories.knowledge_repository import (
+                DatabaseUnavailableError,
+                database_is_ready,
+                hybrid_search_chunks_with_diagnostics,
+            )
 
             session = get_session_factory()()
         except Exception:
@@ -283,15 +291,25 @@ def search_user_evidence(question: str, user_external_id: str):
         try:
             if session is not None and database_is_ready(session):
                 try:
-                    persisted_hits = hybrid_search_chunks(session, question, user_external_id=user_external_id)
+                    persisted_hits, diagnostics = hybrid_search_chunks_with_diagnostics(
+                        session, question, user_external_id=user_external_id
+                    )
                     if persisted_hits:
-                        return persisted_hits
+                        return persisted_hits, diagnostics
                 except DatabaseUnavailableError:
                     pass
         finally:
             if session is not None:
                 session.close()
-    return HybridRetriever(user_documents(user_external_id)).search(question)
+    hits = HybridRetriever(user_documents(user_external_id)).search(question)
+    return hits, {
+        "mode": "local lexical fallback",
+        "lexical_candidates": len(hits),
+        "semantic_candidates": 0,
+        "fused_candidates": len(hits),
+        "selected_candidates": len(hits),
+        "reranker_applied": False,
+    }
 
 
 def persist_audit_event(
@@ -498,7 +516,9 @@ def ask(
     user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> dict[str, object]:
     user_external_id = require_user_id(user_external_id)
-    response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
+    response = run_audit_workflow(
+        payload.question, lambda question: search_user_evidence_with_diagnostics(question, user_external_id)
+    )
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
     persist_audit_event(event_type="question_answered", user_external_id=user_external_id, question=payload.question, response=response)
@@ -554,7 +574,9 @@ def export_audit_report(
     user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> Response:
     user_external_id = require_user_id(user_external_id)
-    response = run_audit_workflow(payload.question, lambda question: search_user_evidence(question, user_external_id))
+    response = run_audit_workflow(
+        payload.question, lambda question: search_user_evidence_with_diagnostics(question, user_external_id)
+    )
     if not response["citations"]:
         raise HTTPException(status_code=404, detail="No searchable evidence")
     persist_audit_event(event_type="report_exported", user_external_id=user_external_id, question=payload.question, response=response)

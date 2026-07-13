@@ -34,6 +34,10 @@ class RetrievedChunk:
     text: str
     location: dict[str, Any]
     score: float
+    lexical_score: float | None = None
+    semantic_score: float | None = None
+    fusion_score: float | None = None
+    rerank_score: float | None = None
 
     @property
     def location_label(self) -> str:

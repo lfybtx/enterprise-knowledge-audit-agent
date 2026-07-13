@@ -126,6 +126,7 @@ class WorkflowTraceStep(Base):
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     failure_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    trace_data: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     workflow_run: Mapped[WorkflowRun] = relationship(back_populates="steps")

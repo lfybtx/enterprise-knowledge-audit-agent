@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from dataclasses import field
 from uuid import uuid4
 from time import perf_counter
 from typing import Any, Callable, Iterable
@@ -28,6 +29,7 @@ class WorkflowTraceEntry:
     input_tokens: int
     output_tokens: int
     failure_reason: str | None
+    trace_data: dict[str, Any] = field(default_factory=dict)
 
 
 def _estimate_tokens(text: str) -> int:
@@ -46,20 +48,30 @@ def _make_prompt(question: str, evidence: list[RetrievedChunk], findings: list[A
 
 def run_audit_workflow(
     question: str,
-    evidence_loader: Callable[[str], list[RetrievedChunk]],
+    evidence_loader: Callable[[str], list[RetrievedChunk] | tuple[list[RetrievedChunk], dict[str, Any]]],
 ) -> dict[str, Any]:
     workflow_steps: list[WorkflowStep] = []
     workflow_trace: list[WorkflowTraceEntry] = []
     trace_id = str(uuid4())
 
     start = perf_counter()
-    evidence = evidence_loader(question)
+    loaded_evidence = evidence_loader(question)
+    if isinstance(loaded_evidence, tuple):
+        evidence, retrieval_diagnostics = loaded_evidence
+    else:
+        evidence, retrieval_diagnostics = loaded_evidence, {}
     retrieval_prompt = _make_prompt(question, evidence, [], "retrieval_agent")
+    retrieval_detail = _retrieval_detail(len(evidence), retrieval_diagnostics)
+    retrieval_tools = ["evidence_loader"]
+    if retrieval_diagnostics:
+        retrieval_tools = ["keyword_search", "pgvector_search", "fusion"]
+        if retrieval_diagnostics.get("reranker_applied"):
+            retrieval_tools.append("local_reranker")
     workflow_steps.append(
         WorkflowStep(
             name="retrieval_agent",
             status="completed" if evidence else "empty",
-            detail=f"retrieved {len(evidence)} evidence chunks",
+            detail=retrieval_detail,
             duration_ms=_elapsed_ms(start),
         )
     )
@@ -67,13 +79,14 @@ def run_audit_workflow(
         WorkflowTraceEntry(
             name="retrieval_agent",
             status="completed" if evidence else "empty",
-            detail=f"retrieved {len(evidence)} evidence chunks",
+            detail=retrieval_detail,
             duration_ms=workflow_steps[-1].duration_ms,
             prompt=retrieval_prompt,
-            tool_calls=["evidence_loader"],
+            tool_calls=retrieval_tools,
             input_tokens=_estimate_tokens(retrieval_prompt),
             output_tokens=max(1, len(evidence) * 24),
             failure_reason=None if evidence else "No evidence returned by retrieval stage",
+            trace_data={"retrieval": retrieval_diagnostics},
         )
     )
 
@@ -130,7 +143,8 @@ def run_audit_workflow(
     return {
         "trace_id": trace_id,
         "answer": grounded_answer(question, evidence),
-        "citations": [chunk_to_citation(item) for item in evidence],
+        "citations": [chunk_to_citation(item, rank=index) for index, item in enumerate(evidence, start=1)],
+        "retrieval_diagnostics": retrieval_diagnostics,
         "findings": [finding_to_payload(item) for item in findings],
         "report": report,
         "workflow_steps": [step.__dict__ for step in workflow_steps],
@@ -183,11 +197,11 @@ def build_risk_report(
         "risk_counts": risk_counts,
         "summary": grounded_answer(question, evidence_list),
         "findings": normalized_findings,
-        "evidence": [chunk_to_citation(chunk) for chunk in evidence_list],
+        "evidence": [chunk_to_citation(chunk, rank=index) for index, chunk in enumerate(evidence_list, start=1)],
     }
 
 
-def chunk_to_citation(item: RetrievedChunk) -> dict[str, Any]:
+def chunk_to_citation(item: RetrievedChunk, rank: int | None = None) -> dict[str, Any]:
     return {
         "document_id": item.document_id,
         "chunk_id": item.chunk_id,
@@ -197,6 +211,11 @@ def chunk_to_citation(item: RetrievedChunk) -> dict[str, Any]:
         "location_label": item.location_label,
         "excerpt": item.text,
         "score": item.score,
+        "selected_rank": rank,
+        "lexical_score": item.lexical_score,
+        "semantic_score": item.semantic_score,
+        "fusion_score": item.fusion_score,
+        "rerank_score": item.rerank_score,
     }
 
 
@@ -221,3 +240,15 @@ def normalize_level(level: str) -> str:
 
 def _elapsed_ms(start: float) -> int:
     return max(0, int((perf_counter() - start) * 1000))
+
+
+def _retrieval_detail(evidence_count: int, diagnostics: dict[str, Any]) -> str:
+    if not diagnostics:
+        return f"retrieved {evidence_count} evidence chunks"
+    return (
+        f"lexical={diagnostics.get('lexical_candidates', 0)}, "
+        f"vector={diagnostics.get('semantic_candidates', 0)}, "
+        f"fused={diagnostics.get('fused_candidates', 0)}, "
+        f"selected={evidence_count}, "
+        f"reranker={'applied' if diagnostics.get('reranker_applied') else 'fallback'}"
+    )

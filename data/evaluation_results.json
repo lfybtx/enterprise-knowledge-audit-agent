@@ -1,10 +1,13 @@
 {
   "summary": {
     "total": 50,
-    "recall_at_1": 0.98,
+    "recall_at_1": 1.0,
     "recall_at_3": 1.0,
-    "citation_accuracy": 0.98,
-    "answer_quality_rate": 1.0
+    "citation_accuracy": 1.0,
+    "answer_quality_rate": 1.0,
+    "average_latency_ms": 485.1,
+    "p95_latency_ms": 308.66,
+    "failure_rate": 0.0
   },
   "outcomes": [
     {
@@ -21,7 +24,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 10110.81,
+      "failed": false
     },
     {
       "id": "security-access-002",
@@ -30,14 +35,16 @@
       "actual_document_ids": [
         "security-access-v1",
         "sales-export-v2",
-        "incident-policy-v1"
+        "travel-policy-v3"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 273.25,
+      "failed": false
     },
     {
       "id": "security-access-003",
@@ -46,14 +53,16 @@
       "actual_document_ids": [
         "security-access-v1",
         "legacy-export-guide",
-        "sales-export-v2"
+        "incident-policy-v1"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 271.67,
+      "failed": false
     },
     {
       "id": "security-access-004",
@@ -69,7 +78,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 288.07,
+      "failed": false
     },
     {
       "id": "security-access-005",
@@ -78,14 +89,16 @@
       "actual_document_ids": [
         "security-access-v1",
         "sales-export-v2",
-        "legacy-export-guide"
+        "incident-policy-v1"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 262.32,
+      "failed": false
     },
     {
       "id": "security-access-006",
@@ -101,7 +114,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 298.15,
+      "failed": false
     },
     {
       "id": "security-access-007",
@@ -117,7 +132,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 290.28,
+      "failed": false
     },
     {
       "id": "security-access-008",
@@ -133,7 +150,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 267.72,
+      "failed": false
     },
     {
       "id": "security-access-009",
@@ -149,7 +168,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 278.63,
+      "failed": false
     },
     {
       "id": "security-access-010",
@@ -165,7 +186,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 283.38,
+      "failed": false
     },
     {
       "id": "sales-export-001",
@@ -181,7 +204,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 294.08,
+      "failed": false
     },
     {
       "id": "sales-export-002",
@@ -189,15 +214,17 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "legacy-export-guide",
-        "incident-policy-v1"
+        "security-access-v1",
+        "legacy-export-guide"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 301.68,
+      "failed": false
     },
     {
       "id": "sales-export-003",
@@ -205,15 +232,17 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "legacy-export-guide",
-        "security-access-v1"
+        "security-access-v1",
+        "legacy-export-guide"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 279.11,
+      "failed": false
     },
     {
       "id": "sales-export-004",
@@ -229,7 +258,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 291.7,
+      "failed": false
     },
     {
       "id": "sales-export-005",
@@ -245,7 +276,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 277.83,
+      "failed": false
     },
     {
       "id": "sales-export-006",
@@ -254,14 +287,16 @@
       "actual_document_ids": [
         "sales-export-v2",
         "security-access-v1",
-        "incident-policy-v1"
+        "travel-policy-v3"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 289.59,
+      "failed": false
     },
     {
       "id": "sales-export-007",
@@ -269,15 +304,17 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "legacy-export-guide",
-        "security-access-v1"
+        "security-access-v1",
+        "legacy-export-guide"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 300.61,
+      "failed": false
     },
     {
       "id": "sales-export-008",
@@ -285,15 +322,17 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "legacy-export-guide",
-        "security-access-v1"
+        "security-access-v1",
+        "legacy-export-guide"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 287.01,
+      "failed": false
     },
     {
       "id": "sales-export-009",
@@ -309,7 +348,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 283.03,
+      "failed": false
     },
     {
       "id": "sales-export-010",
@@ -325,7 +366,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 302.85,
+      "failed": false
     },
     {
       "id": "travel-policy-001",
@@ -333,15 +376,17 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "security-access-v1",
-        "sales-export-v2"
+        "sales-export-v2",
+        "security-access-v1"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 281.69,
+      "failed": false
     },
     {
       "id": "travel-policy-002",
@@ -357,43 +402,13 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 283.59,
+      "failed": false
     },
     {
       "id": "travel-policy-003",
       "question": "超标准住宿报销前需要谁审批？",
-      "expected_document_id": "travel-policy-v3",
-      "actual_document_ids": [
-        "travel-policy-v3",
-        "incident-policy-v1",
-        "sales-export-v2"
-      ],
-      "top_document_id": "travel-policy-v3",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true
-    },
-    {
-      "id": "travel-policy-004",
-      "question": "机票改签产生额外费用时需要说明什么？",
-      "expected_document_id": "travel-policy-v3",
-      "actual_document_ids": [
-        "travel-policy-v3",
-        "legacy-export-guide",
-        "incident-policy-v1"
-      ],
-      "top_document_id": "travel-policy-v3",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true
-    },
-    {
-      "id": "travel-policy-005",
-      "question": "差旅住宿标准如何区分一线城市和其他城市？",
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
@@ -405,7 +420,45 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 272.98,
+      "failed": false
+    },
+    {
+      "id": "travel-policy-004",
+      "question": "机票改签产生额外费用时需要说明什么？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "sales-export-v2",
+        "legacy-export-guide"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 278.13,
+      "failed": false
+    },
+    {
+      "id": "travel-policy-005",
+      "question": "差旅住宿标准如何区分一线城市和其他城市？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 283.58,
+      "failed": false
     },
     {
       "id": "travel-policy-006",
@@ -421,7 +474,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 311.21,
+      "failed": false
     },
     {
       "id": "travel-policy-007",
@@ -429,15 +484,17 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "incident-policy-v1",
-        "sales-export-v2"
+        "sales-export-v2",
+        "legacy-export-guide"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 294.81,
+      "failed": false
     },
     {
       "id": "travel-policy-008",
@@ -445,15 +502,17 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "legacy-export-guide",
-        "security-access-v1"
+        "sales-export-v2",
+        "legacy-export-guide"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 294.07,
+      "failed": false
     },
     {
       "id": "travel-policy-009",
@@ -461,23 +520,7 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "security-access-v1",
-        "sales-export-v2"
-      ],
-      "top_document_id": "travel-policy-v3",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true
-    },
-    {
-      "id": "travel-policy-010",
-      "question": "直属总监审批适用于哪类住宿报销情况？",
-      "expected_document_id": "travel-policy-v3",
-      "actual_document_ids": [
-        "travel-policy-v3",
-        "legacy-export-guide",
+        "sales-export-v2",
         "security-access-v1"
       ],
       "top_document_id": "travel-policy-v3",
@@ -485,7 +528,27 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 284.67,
+      "failed": false
+    },
+    {
+      "id": "travel-policy-010",
+      "question": "直属总监审批适用于哪类住宿报销情况？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 291.51,
+      "failed": false
     },
     {
       "id": "incident-policy-001",
@@ -494,14 +557,16 @@
       "actual_document_ids": [
         "incident-policy-v1",
         "security-access-v1",
-        "legacy-export-guide"
+        "sales-export-v2"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 290.19,
+      "failed": false
     },
     {
       "id": "incident-policy-002",
@@ -517,7 +582,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 285.45,
+      "failed": false
     },
     {
       "id": "incident-policy-003",
@@ -525,15 +592,17 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "sales-export-v2",
-        "legacy-export-guide"
+        "security-access-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 295.39,
+      "failed": false
     },
     {
       "id": "incident-policy-004",
@@ -549,7 +618,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 299.83,
+      "failed": false
     },
     {
       "id": "incident-policy-005",
@@ -558,14 +629,16 @@
       "actual_document_ids": [
         "incident-policy-v1",
         "security-access-v1",
-        "legacy-export-guide"
+        "sales-export-v2"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 295.64,
+      "failed": false
     },
     {
       "id": "incident-policy-006",
@@ -581,7 +654,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 282.18,
+      "failed": false
     },
     {
       "id": "incident-policy-007",
@@ -597,7 +672,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 276.98,
+      "failed": false
     },
     {
       "id": "incident-policy-008",
@@ -605,15 +682,17 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "legacy-export-guide",
-        "security-access-v1"
+        "security-access-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 275.77,
+      "failed": false
     },
     {
       "id": "incident-policy-009",
@@ -621,15 +700,17 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "sales-export-v2",
-        "security-access-v1"
+        "security-access-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 279.68,
+      "failed": false
     },
     {
       "id": "incident-policy-010",
@@ -645,7 +726,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 308.66,
+      "failed": false
     },
     {
       "id": "legacy-export-001",
@@ -654,14 +737,16 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "sales-export-v2",
-        "travel-policy-v3"
+        "security-access-v1"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 296.89,
+      "failed": false
     },
     {
       "id": "legacy-export-002",
@@ -677,7 +762,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 282.46,
+      "failed": false
     },
     {
       "id": "legacy-export-003",
@@ -693,7 +780,9 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 292.0,
+      "failed": false
     },
     {
       "id": "legacy-export-004",
@@ -702,38 +791,6 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "security-access-v1",
-        "travel-policy-v3"
-      ],
-      "top_document_id": "legacy-export-guide",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true
-    },
-    {
-      "id": "legacy-export-005",
-      "question": "为了提升销售效率，旧版工具是否允许线下整理完整客户清单？",
-      "expected_document_id": "legacy-export-guide",
-      "actual_document_ids": [
-        "legacy-export-guide",
-        "sales-export-v2",
-        "security-access-v1"
-      ],
-      "top_document_id": "legacy-export-guide",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true
-    },
-    {
-      "id": "legacy-export-006",
-      "question": "历史资料中的销售工具使用说明适用于哪个版本的工具？",
-      "expected_document_id": "legacy-export-guide",
-      "actual_document_ids": [
-        "legacy-export-guide",
-        "travel-policy-v3",
         "sales-export-v2"
       ],
       "top_document_id": "legacy-export-guide",
@@ -741,11 +798,31 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 287.12,
+      "failed": false
     },
     {
-      "id": "legacy-export-007",
-      "question": "旧版工具直接下载客户清单的说明是否属于历史资料？",
+      "id": "legacy-export-005",
+      "question": "为了提升销售效率，旧版工具是否允许线下整理完整客户清单？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 294.7,
+      "failed": false
+    },
+    {
+      "id": "legacy-export-006",
+      "question": "历史资料中的销售工具使用说明适用于哪个版本的工具？",
       "expected_document_id": "legacy-export-guide",
       "actual_document_ids": [
         "legacy-export-guide",
@@ -757,23 +834,45 @@
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 286.88,
+      "failed": false
+    },
+    {
+      "id": "legacy-export-007",
+      "question": "旧版工具直接下载客户清单的说明是否属于历史资料？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 298.54,
+      "failed": false
     },
     {
       "id": "legacy-export-008",
       "question": "历史销售工具使用说明和当前客户导出规范是否可能冲突？",
       "expected_document_id": "legacy-export-guide",
       "actual_document_ids": [
-        "sales-export-v2",
         "legacy-export-guide",
+        "sales-export-v2",
         "security-access-v1"
       ],
-      "top_document_id": "sales-export-v2",
+      "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
-      "recall_at_1": false,
+      "recall_at_1": true,
       "recall_at_3": true,
-      "citation_correct": false,
-      "answer_quality_passed": true
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "latency_ms": 301.15,
+      "failed": false
     },
     {
       "id": "legacy-export-009",
@@ -782,14 +881,16 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "sales-export-v2",
-        "travel-policy-v3"
+        "security-access-v1"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 307.4,
+      "failed": false
     },
     {
       "id": "legacy-export-010",
@@ -798,14 +899,38 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "security-access-v1",
-        "travel-policy-v3"
+        "incident-policy-v1"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
       "recall_at_1": true,
       "recall_at_3": true,
       "citation_correct": true,
-      "answer_quality_passed": true
+      "answer_quality_passed": true,
+      "latency_ms": 309.97,
+      "failed": false
     }
-  ]
+  ],
+  "comparison": {
+    "fusion_baseline": {
+      "total": 50,
+      "recall_at_1": 0.98,
+      "recall_at_3": 1.0,
+      "citation_accuracy": 0.98,
+      "answer_quality_rate": 1.0,
+      "average_latency_ms": 0.08,
+      "p95_latency_ms": 0.15,
+      "failure_rate": 0.0
+    },
+    "reranked": {
+      "total": 50,
+      "recall_at_1": 1.0,
+      "recall_at_3": 1.0,
+      "citation_accuracy": 1.0,
+      "answer_quality_rate": 1.0,
+      "average_latency_ms": 485.1,
+      "p95_latency_ms": 308.66,
+      "failure_rate": 0.0
+    }
+  }
 }
