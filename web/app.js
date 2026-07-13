@@ -216,6 +216,75 @@ function renderEvaluationResults(payload) {
   `).join("");
 }
 
+function modelLabel(model) {
+  if (!model) return "-";
+  const provider = model.provider || "-";
+  const name = model.model || model.chat_model || model.embedding_model || "";
+  return name ? `${provider} / ${name}` : provider;
+}
+
+function renderSystemStatus(payload) {
+  const database = payload?.database || {};
+  const counts = database.table_counts || {};
+  const index = payload?.index || {};
+  const models = payload?.models || {};
+  const cards = [
+    ["数据库", database.connected ? "已连接" : "未连接", database.connected ? "ok" : "error"],
+    ["pgvector", database.pgvector_installed ? "已启用" : "未启用", database.pgvector_installed ? "ok" : "warn"],
+    ["迁移版本", database.alembic_version || "-", database.alembic_version ? "ok" : "warn"],
+    ["索引健康", index.healthy ? "正常" : "需检查", index.healthy ? "ok" : "warn"],
+    ["文档", counts.documents ?? 0, "ok"],
+    ["切片", counts.document_chunks ?? 0, "ok"],
+    ["审计记录", counts.workflow_runs ?? 0, "ok"],
+    ["Trace 步骤", counts.workflow_trace_steps ?? 0, "ok"],
+    ["Embedding", modelLabel(models.embedding), "ok"],
+    ["LLM", modelLabel(models.chat), "ok"],
+    ["缺失向量切片", index.chunks_missing_embeddings ?? 0, index.chunks_missing_embeddings ? "warn" : "ok"],
+    ["最近审计", payload?.recent_audit_runs?.length ?? 0, "ok"],
+  ];
+  $("#system-status").innerHTML = cards.map(([label, value, state]) => `
+    <div class="system-card ${state}">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+    </div>
+  `).join("");
+
+  const issues = index.issues || [];
+  const withoutChunks = index.documents_without_chunks || [];
+  const duplicates = index.duplicate_documents || [];
+  const issueRows = [];
+  if (!issues.length && !withoutChunks.length && !duplicates.length) {
+    issueRows.push('<div class="system-issue">未发现索引异常。</div>');
+  }
+  issues.forEach((issue) => issueRows.push(`<div class="system-issue warn">${escapeHtml(issue)}</div>`));
+  withoutChunks.forEach((document) => issueRows.push(`
+    <div class="system-issue warn">文档没有切片：${escapeHtml(document.title)} (${escapeHtml(document.id)})</div>
+  `));
+  duplicates.forEach((item) => issueRows.push(`
+    <div class="system-issue warn">疑似重复文档：${escapeHtml(item.title)}，数量 ${escapeHtml(item.duplicate_count)}</div>
+  `));
+  $("#system-issues").innerHTML = issueRows.join("");
+}
+
+function renderSystemStatusError(message) {
+  $("#system-status").innerHTML = `
+    <div class="system-card error">
+      <span>系统诊断</span>
+      <strong>无法读取</strong>
+    </div>
+  `;
+  $("#system-issues").innerHTML = `<div class="system-issue warn">${escapeHtml(message)}</div>`;
+}
+
+async function refreshSystemStatus() {
+  try {
+    const payload = await fetchJson("/api/admin/system-status");
+    renderSystemStatus(payload);
+  } catch (error) {
+    renderSystemStatusError(error.message);
+  }
+}
+
 function renderRetrievalCandidates(retrieval) {
   const candidates = retrieval?.candidate_ranking;
   if (!Array.isArray(candidates) || !candidates.length) return "";
@@ -407,6 +476,7 @@ async function refreshOverview() {
     : `<div class="document muted">${escapeHtml(me.display_name)} 当前没有可见文档。</div>`;
   renderAuditHistory(audit);
   renderEvaluationResults(evaluation);
+  await refreshSystemStatus();
   if (selectedTraceId) {
     const selected = audit.find((item) => item.trace_id === selectedTraceId);
     if (selected?.workflow_trace) renderTrace(selected.workflow_trace, `${selected.event} - ${selected.trace_id}`);
@@ -633,6 +703,7 @@ $("#upload-form").addEventListener("submit", uploadDocument);
 $("#url-ingest-form").addEventListener("submit", ingestUrlDocument);
 $("#login-form").addEventListener("submit", login);
 $("#logout-button").addEventListener("click", logout);
+$("#refresh-system-status").addEventListener("click", refreshSystemStatus);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {

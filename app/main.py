@@ -485,6 +485,66 @@ def get_model_config() -> dict[str, object]:
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
+@app.get("/api/admin/system-status")
+def get_system_status(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, object]:
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Current role cannot view system diagnostics")
+    try:
+        model_status = ModelProviderSettings.from_environment().public_status()
+    except ModelConfigurationError as error:
+        model_status = {"provider": "invalid", "remote_enabled": False, "configuration_error": str(error)}
+    try:
+        chat_status = ChatProviderSettings.from_environment().public_status()
+    except ModelConfigurationError as error:
+        chat_status = {"provider": "invalid", "remote_enabled": False, "configuration_error": str(error)}
+
+    payload: dict[str, object] = {
+        "status": "ok",
+        "user": {"id": current_user.id, "role": current_user.role},
+        "models": {"embedding": model_status, "chat": chat_status},
+    }
+    if not os.getenv("DATABASE_URL"):
+        payload.update(
+            {
+                "database": {
+                    "connected": False,
+                    "pgvector_installed": False,
+                    "alembic_version": None,
+                    "table_counts": {
+                        "documents": len(documents),
+                        "document_chunks": sum(len(document.get("chunks", [])) for document in documents),
+                        "workflow_runs": len(audit_log),
+                        "workflow_trace_steps": sum(len(event.get("workflow_trace", [])) for event in audit_log),
+                    },
+                },
+                "index": {
+                    "healthy": True,
+                    "issues": ["PostgreSQL is not configured; using in-memory/json fallback"],
+                    "documents_without_chunks": [],
+                    "chunks_missing_embeddings": 0,
+                    "duplicate_documents": [],
+                },
+                "recent_audit_runs": audit_log[-5:],
+            }
+        )
+        return payload
+
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import DatabaseUnavailableError, load_system_diagnostics
+
+        session = get_session_factory()()
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="System diagnostics are unavailable") from error
+    try:
+        payload.update(load_system_diagnostics(session))
+        return payload
+    except DatabaseUnavailableError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    finally:
+        session.close()
+
+
 @app.post("/api/auth/login")
 def login(payload: LoginRequest) -> dict[str, object]:
     account = authenticate_demo_user(payload.username, payload.password)

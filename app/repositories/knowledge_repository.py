@@ -387,6 +387,95 @@ def database_is_ready(session: Session) -> bool:
         return False
 
 
+def load_system_diagnostics(session: Session) -> dict[str, Any]:
+    """Return database and index health data for the operations panel."""
+    try:
+        vector_installed = bool(
+            session.execute(text("select exists(select 1 from pg_extension where extname = 'vector')")).scalar_one()
+        )
+        alembic_version = session.execute(text("select version_num from alembic_version")).scalar_one_or_none()
+
+        table_counts = {
+            "users": session.scalar(select(func.count()).select_from(User)) or 0,
+            "knowledge_bases": session.scalar(select(func.count()).select_from(KnowledgeBase)) or 0,
+            "knowledge_base_members": session.scalar(select(func.count()).select_from(KnowledgeBaseMember)) or 0,
+            "documents": session.scalar(select(func.count()).select_from(KnowledgeDocument)) or 0,
+            "document_chunks": session.scalar(select(func.count()).select_from(DocumentChunk)) or 0,
+            "workflow_runs": session.scalar(select(func.count()).select_from(WorkflowRun)) or 0,
+            "workflow_trace_steps": session.scalar(select(func.count()).select_from(WorkflowTraceStep)) or 0,
+        }
+
+        documents_without_chunks = session.execute(
+            select(KnowledgeDocument.id, KnowledgeDocument.title)
+            .outerjoin(DocumentChunk)
+            .group_by(KnowledgeDocument.id)
+            .having(func.count(DocumentChunk.id) == 0)
+            .order_by(KnowledgeDocument.created_at.desc())
+            .limit(20)
+        ).all()
+        chunks_missing_embeddings = session.scalar(
+            select(func.count()).select_from(DocumentChunk).where(DocumentChunk.embedding.is_(None))
+        ) or 0
+        duplicate_documents = session.execute(
+            text(
+                """
+                select title, file_type, md5(content) as content_hash, count(*) as duplicate_count
+                from documents
+                group by knowledge_base_id, title, file_type, md5(content)
+                having count(*) > 1
+                order by duplicate_count desc, title
+                limit 20
+                """
+            )
+        ).mappings().all()
+        recent_runs = session.scalars(
+            select(WorkflowRun).order_by(WorkflowRun.created_at.desc(), WorkflowRun.id.desc()).limit(5)
+        ).all()
+
+        issues = []
+        if table_counts["documents"] and not table_counts["document_chunks"]:
+            issues.append("Documents exist but no chunks were indexed")
+        if chunks_missing_embeddings:
+            issues.append(f"{chunks_missing_embeddings} chunks are missing embeddings")
+        if documents_without_chunks:
+            issues.append(f"{len(documents_without_chunks)} documents have no chunks")
+        if duplicate_documents:
+            issues.append(f"{len(duplicate_documents)} possible duplicate document groups found")
+
+        return {
+            "database": {
+                "connected": True,
+                "pgvector_installed": vector_installed,
+                "alembic_version": alembic_version,
+                "table_counts": table_counts,
+            },
+            "index": {
+                "healthy": not issues,
+                "issues": issues,
+                "documents_without_chunks": [
+                    {"id": str(row.id), "title": row.title} for row in documents_without_chunks
+                ],
+                "chunks_missing_embeddings": chunks_missing_embeddings,
+                "duplicate_documents": [dict(row) for row in duplicate_documents],
+            },
+            "recent_audit_runs": [
+                {
+                    "trace_id": run.trace_id,
+                    "user_id": run.user_id,
+                    "status": run.status,
+                    "approval_status": run.approval_status,
+                    "duration_ms": run.duration_ms,
+                    "question": run.question,
+                    "created_at": run.created_at.isoformat() if run.created_at else None,
+                }
+                for run in recent_runs
+            ],
+        }
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to load database diagnostics") from exc
+
+
 def document_to_record(document: KnowledgeDocument) -> dict[str, Any]:
     knowledge_base = getattr(document, "knowledge_base", None)
     return {
