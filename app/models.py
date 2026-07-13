@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, CheckConstraint, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID as PostgreSQLUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -17,6 +17,9 @@ class KnowledgeBase(Base):
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     owner_id: Mapped[str] = mapped_column(String(100), nullable=False, default="local-demo")
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False, default="tenant-demo")
+    department: Mapped[str] = mapped_column(String(100), nullable=False, default="general")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     documents: Mapped[list[KnowledgeDocument]] = relationship(back_populates="knowledge_base", cascade="all, delete-orphan")
@@ -71,6 +74,21 @@ class KnowledgeDocument(Base):
 
     knowledge_base: Mapped[KnowledgeBase] = relationship(back_populates="documents")
     chunks: Mapped[list[DocumentChunk]] = relationship(back_populates="document", cascade="all, delete-orphan")
+    permissions: Mapped[list[DocumentPermission]] = relationship(back_populates="document", cascade="all, delete-orphan")
+
+
+class DocumentPermission(Base):
+    __tablename__ = "document_permissions"
+    __table_args__ = (UniqueConstraint("document_id", "user_id"),)
+
+    id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
+    document_id: Mapped[UUID] = mapped_column(ForeignKey("documents.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    can_view: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    document: Mapped[KnowledgeDocument] = relationship(back_populates="permissions")
+    user: Mapped[User] = relationship()
 
 
 class DocumentChunk(Base):

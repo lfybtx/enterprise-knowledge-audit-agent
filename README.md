@@ -13,7 +13,7 @@
 - 证据引用：保留页码、段落、行号、表格、Sheet、Row 等来源信息。
 - 多 Agent 工作流：检索 Agent、审计 Agent、报告 Agent、人工确认节点。
 - 结构化风险报告：风险等级、依据、建议动作、引用来源。
-- 权限隔离：JWT 登录，演示用户只能访问自己有权限的知识库。
+- 权限隔离：JWT 登录，知识库成员角色和文档级 ACL 会共同限制可见范围。
 - 可观测性：记录 prompt、工具调用、耗时、token 估算、失败原因、LLM fallback。
 - 可评测：内置 60 条评测用例和可复现评测结果。
 - 可部署：FastAPI + PostgreSQL/pgvector + MinIO + Docker Compose 一键启动。
@@ -92,7 +92,7 @@ http://127.0.0.1:9001
 | `bob` | `bob123456` | viewer | 只读用户，用来演示权限隔离 |
 | Header 模式 | `X-User-Id: local-demo` | owner | 本地调试和默认演示用户 |
 
-前端也保留了演示用户切换器，方便展示 Alice / Bob 权限差异。
+前端也保留了演示用户切换器，方便展示 Alice / Bob 权限差异。第十六阶段加入了知识库成员管理和文档级 ACL：owner 可以维护成员，editor 可以上传和检索，viewer 只能查看授权内容。
 
 ## DeepSeek 接入
 

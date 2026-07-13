@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import Any, Optional
 from urllib.parse import urlparse
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -94,6 +94,21 @@ class WorkflowReviewRequest(BaseModel):
 class UrlIngestRequest(BaseModel):
     title: str = Field(min_length=2, max_length=120)
     url: str = Field(min_length=8, max_length=1000)
+
+
+class KnowledgeBaseCreateRequest(BaseModel):
+    name: str = Field(min_length=2, max_length=120)
+    description: str = Field(default="", max_length=1000)
+    department: str = Field(default="general", min_length=2, max_length=100)
+
+
+class KnowledgeBaseMemberRequest(BaseModel):
+    user_id: str = Field(min_length=2, max_length=100)
+    role: str = Field(pattern="^(owner|editor|viewer)$")
+
+
+class DocumentPermissionRequest(BaseModel):
+    user_id: str = Field(min_length=2, max_length=100)
 
 
 class LoginRequest(BaseModel):
@@ -239,6 +254,38 @@ def knowledge_bases_for_user(user_external_id: str) -> list[dict[str, object]]:
     ]
 
 
+def database_session():
+    if not os.getenv("DATABASE_URL"):
+        return None
+    try:
+        from app.db import get_session_factory
+        from app.repositories.knowledge_repository import database_is_ready
+
+        session = get_session_factory()()
+        if database_is_ready(session):
+            return session
+        session.close()
+    except Exception:
+        return None
+    return None
+
+
+def parse_uuid_or_400(value: str, name: str) -> UUID:
+    try:
+        return UUID(value)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=f"Invalid {name}") from exc
+
+
+def selected_knowledge_base_uuid(value: str | None) -> UUID | None:
+    if not value:
+        return None
+    try:
+        return UUID(value)
+    except ValueError:
+        return None
+
+
 def user_documents(user_external_id: str) -> list[dict[str, Any]]:
     return [document for document in documents if document_visible_to_user(document, user_external_id)]
 
@@ -299,6 +346,7 @@ def load_persisted_audit_log(user_external_id: str) -> list[dict[str, Any]] | No
 def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> dict[str, Any]:
     """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
     document["owner_id"] = user_external_id
+    knowledge_base_id = selected_knowledge_base_uuid(document.get("knowledge_base_id"))
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
@@ -322,8 +370,11 @@ def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> 
                         file_type=document["file_type"],
                         content=document["content"],
                         chunks=document["chunks"],
+                        knowledge_base_id=knowledge_base_id,
                     )
                     return persisted_document
+                except PermissionError as error:
+                    raise HTTPException(status_code=403, detail=str(error)) from error
                 except DatabaseUnavailableError:
                     pass
         finally:
@@ -579,7 +630,110 @@ def get_current_user(current_user: AuthenticatedUser = Depends(get_authenticated
 
 @app.get("/api/knowledge-bases")
 def list_knowledge_bases(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> list[dict[str, object]]:
+    session = database_session()
+    if session is not None:
+        try:
+            from app.repositories.knowledge_repository import list_knowledge_base_records
+
+            records = list_knowledge_base_records(session, current_user.id)
+            if records:
+                return records
+        finally:
+            session.close()
     return knowledge_bases_for_user(current_user.id)
+
+
+@app.post("/api/knowledge-bases", status_code=201)
+def create_kb(
+    payload: KnowledgeBaseCreateRequest,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> dict[str, object]:
+    if current_user.role not in WRITE_ROLES:
+        raise HTTPException(status_code=403, detail="Current role cannot create knowledge bases")
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Knowledge base management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import create_knowledge_base
+
+        return create_knowledge_base(
+            session,
+            name=payload.name,
+            owner_external_id=current_user.id,
+            tenant_id=current_user.tenant_id,
+            department=payload.department,
+            description=payload.description,
+        )
+    finally:
+        session.close()
+
+
+@app.get("/api/knowledge-bases/{knowledge_base_id}/members")
+def get_kb_members(
+    knowledge_base_id: str,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> list[dict[str, object]]:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Knowledge base member management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import list_knowledge_base_members
+
+        return list_knowledge_base_members(session, parse_uuid_or_400(knowledge_base_id, "knowledge_base_id"), current_user.id)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    finally:
+        session.close()
+
+
+@app.put("/api/knowledge-bases/{knowledge_base_id}/members")
+def put_kb_member(
+    knowledge_base_id: str,
+    payload: KnowledgeBaseMemberRequest,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> dict[str, object]:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Knowledge base member management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import upsert_knowledge_base_member
+
+        return upsert_knowledge_base_member(
+            session,
+            knowledge_base_id=parse_uuid_or_400(knowledge_base_id, "knowledge_base_id"),
+            actor_external_id=current_user.id,
+            member_external_id=payload.user_id,
+            role=payload.role,
+        )
+    except (PermissionError, ValueError) as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    finally:
+        session.close()
+
+
+@app.delete("/api/knowledge-bases/{knowledge_base_id}/members/{member_user_id}", status_code=204)
+def delete_kb_member(
+    knowledge_base_id: str,
+    member_user_id: str,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> Response:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Knowledge base member management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import remove_knowledge_base_member
+
+        remove_knowledge_base_member(
+            session,
+            knowledge_base_id=parse_uuid_or_400(knowledge_base_id, "knowledge_base_id"),
+            actor_external_id=current_user.id,
+            member_external_id=member_user_id,
+        )
+        return Response(status_code=204)
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    finally:
+        session.close()
 
 
 @app.get("/api/documents")
@@ -594,6 +748,7 @@ def list_documents(current_user: AuthenticatedUser = Depends(get_authenticated_u
 def create_document(
     payload: DocumentCreate,
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
     require_write_access(current_user.id)
     document_id = str(uuid4())
@@ -606,6 +761,9 @@ def create_document(
             [{"text": payload.content, "location": {"kind": "document"}}],
         ),
     }
+    selected_kb_id = selected_knowledge_base_uuid(knowledge_base_id)
+    if selected_kb_id:
+        document["knowledge_base_id"] = str(selected_kb_id)
     document = persist_or_save_runtime(document, current_user.id)
     add_document(document)
     audit_log.append({"event": "document_ingested", "document_id": document["id"], "user_id": current_user.id})
@@ -617,6 +775,7 @@ async def upload_document(
     title: str = Form(..., min_length=2, max_length=120),
     file: UploadFile = File(...),
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
     require_write_access(current_user.id)
     raw_content = await file.read()
@@ -653,6 +812,9 @@ async def upload_document(
             [{"text": section.text, "location": section.location} for section in parsed_document.sections],
         ),
     }
+    selected_kb_id = selected_knowledge_base_uuid(knowledge_base_id)
+    if selected_kb_id:
+        document["knowledge_base_id"] = str(selected_kb_id)
     document = persist_or_save_runtime(document, current_user.id)
     add_document(document)
     audit_log.append(
@@ -676,6 +838,7 @@ async def upload_document(
 def ingest_url_document(
     payload: UrlIngestRequest,
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
+    knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
     require_write_access(current_user.id)
     parsed_url = urlparse(payload.url)
@@ -713,6 +876,9 @@ def ingest_url_document(
             [{"text": section.text, "location": section.location} for section in parsed_document.sections],
         ),
     }
+    selected_kb_id = selected_knowledge_base_uuid(knowledge_base_id)
+    if selected_kb_id:
+        document["knowledge_base_id"] = str(selected_kb_id)
     document = persist_or_save_runtime(document, current_user.id)
     add_document(document)
     audit_log.append(
@@ -724,6 +890,30 @@ def ingest_url_document(
         }
     )
     return {"id": document["id"], "message": "URL ingested and indexed", "source": document["source"]}
+
+
+@app.put("/api/documents/{document_id}/permissions")
+def grant_document_permission(
+    document_id: str,
+    payload: DocumentPermissionRequest,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> dict[str, object]:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Document permissions require PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import grant_document_view_permission
+
+        return grant_document_view_permission(
+            session,
+            document_id=parse_uuid_or_400(document_id, "document_id"),
+            actor_external_id=current_user.id,
+            grantee_external_id=payload.user_id,
+        )
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    finally:
+        session.close()
 
 
 @app.post("/api/ask")

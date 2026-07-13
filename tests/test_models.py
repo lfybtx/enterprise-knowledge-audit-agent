@@ -6,6 +6,7 @@ sqlalchemy = pytest.importorskip("sqlalchemy")
 from app.db import Base
 from app.models import (
     DocumentChunk,
+    DocumentPermission,
     KnowledgeBase,
     KnowledgeBaseMember,
     KnowledgeDocument,
@@ -24,6 +25,7 @@ def test_database_models_define_core_tables():
         "knowledge_base_members",
         "workflow_runs",
         "workflow_trace_steps",
+        "document_permissions",
     } <= set(
         Base.metadata.tables
     )
@@ -34,6 +36,7 @@ def test_database_models_define_core_tables():
     assert KnowledgeBaseMember.__tablename__ == "knowledge_base_members"
     assert WorkflowRun.__tablename__ == "workflow_runs"
     assert WorkflowTraceStep.__tablename__ == "workflow_trace_steps"
+    assert DocumentPermission.__tablename__ == "document_permissions"
 
 
 def test_document_chunk_has_unique_document_index_constraint():
@@ -63,6 +66,22 @@ def test_knowledge_base_membership_has_unique_user_constraint_and_role():
 def test_knowledge_base_membership_relationships_are_defined():
     assert KnowledgeBase.memberships.property.mapper.class_ is KnowledgeBaseMember
     assert User.memberships.property.mapper.class_ is KnowledgeBaseMember
+
+
+def test_knowledge_base_has_enterprise_metadata_columns():
+    assert "tenant_id" in KnowledgeBase.__table__.columns
+    assert "department" in KnowledgeBase.__table__.columns
+    assert "description" in KnowledgeBase.__table__.columns
+
+
+def test_document_permission_has_unique_document_user_constraint():
+    constraints = DocumentPermission.__table__.constraints
+    assert any(
+        getattr(constraint, "columns", None)
+        and {column.name for column in constraint.columns} == {"document_id", "user_id"}
+        for constraint in constraints
+    )
+    assert "can_view" in DocumentPermission.__table__.columns
 
 
 def test_workflow_trace_models_have_expected_fields():

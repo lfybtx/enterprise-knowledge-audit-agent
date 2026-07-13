@@ -22,3 +22,13 @@ left join knowledge_base_members m on m.knowledge_base_id = kb.id
 group by kb.id
 order by kb.name;
 
+select
+    d.title,
+    u.external_id,
+    u.display_name,
+    dp.can_view,
+    dp.created_at
+from document_permissions dp
+join documents d on d.id = dp.document_id
+join users u on u.id = dp.user_id
+order by d.title, u.external_id;

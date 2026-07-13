@@ -9,6 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
 from app.models import (
+    DocumentPermission,
     DocumentChunk,
     KnowledgeBase,
     KnowledgeBaseMember,
@@ -26,6 +27,7 @@ from app.vector_utils import vector_literal
 LOCAL_KNOWLEDGE_BASE_NAME = "Local demo knowledge base"
 LOCAL_OWNER_ID = "local-demo"
 WRITE_ROLES = {"owner", "editor"}
+MANAGE_ROLES = {"owner"}
 
 
 class DatabaseUnavailableError(RuntimeError):
@@ -81,8 +83,140 @@ def ensure_local_knowledge_base(session: Session, owner_external_id: str = LOCAL
     return knowledge_base
 
 
+def create_knowledge_base(
+    session: Session,
+    *,
+    name: str,
+    owner_external_id: str,
+    tenant_id: str,
+    department: str,
+    description: str = "",
+) -> dict[str, Any]:
+    try:
+        owner = ensure_user(session, owner_external_id)
+        knowledge_base = KnowledgeBase(
+            name=name,
+            owner_id=owner_external_id,
+            tenant_id=tenant_id,
+            department=department,
+            description=description,
+        )
+        session.add(knowledge_base)
+        session.flush()
+        ensure_knowledge_base_membership(session, knowledge_base=knowledge_base, user=owner, role="owner")
+        session.commit()
+        session.refresh(knowledge_base)
+        return knowledge_base_to_record(knowledge_base, "owner")
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to create knowledge base") from exc
+
+
+def list_knowledge_base_records(session: Session, user_external_id: str) -> list[dict[str, Any]]:
+    try:
+        rows = session.execute(
+            select(KnowledgeBase, KnowledgeBaseMember.role)
+            .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
+            .join(User, User.id == KnowledgeBaseMember.user_id)
+            .where(User.external_id == user_external_id)
+            .order_by(KnowledgeBase.created_at, KnowledgeBase.name)
+        ).all()
+        return [knowledge_base_to_record(knowledge_base, role) for knowledge_base, role in rows]
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to list knowledge bases") from exc
+
+
+def list_knowledge_base_members(session: Session, knowledge_base_id: UUID, user_external_id: str) -> list[dict[str, Any]]:
+    if not user_can_view_knowledge_base(session, user_external_id, knowledge_base_id):
+        raise PermissionError("Current user cannot view this knowledge base")
+    try:
+        rows = session.execute(
+            select(KnowledgeBaseMember, User)
+            .join(User, User.id == KnowledgeBaseMember.user_id)
+            .where(KnowledgeBaseMember.knowledge_base_id == knowledge_base_id)
+            .order_by(KnowledgeBaseMember.role, User.external_id)
+        ).all()
+        return [
+            {
+                "user_id": user.external_id,
+                "display_name": user.display_name,
+                "role": membership.role,
+                "created_at": membership.created_at.isoformat() if membership.created_at else None,
+            }
+            for membership, user in rows
+        ]
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to list knowledge base members") from exc
+
+
+def upsert_knowledge_base_member(
+    session: Session,
+    *,
+    knowledge_base_id: UUID,
+    actor_external_id: str,
+    member_external_id: str,
+    role: str,
+) -> dict[str, Any]:
+    if role not in {"owner", "editor", "viewer"}:
+        raise ValueError("Invalid role")
+    if not user_can_manage_knowledge_base(session, actor_external_id, knowledge_base_id):
+        raise PermissionError("Current user cannot manage this knowledge base")
+    try:
+        knowledge_base = session.get(KnowledgeBase, knowledge_base_id)
+        if knowledge_base is None:
+            raise PermissionError("Knowledge base was not found")
+        user = ensure_user(session, member_external_id)
+        membership = ensure_knowledge_base_membership(session, knowledge_base=knowledge_base, user=user, role=role)
+        membership.role = role
+        session.commit()
+        return {"user_id": user.external_id, "display_name": user.display_name, "role": membership.role}
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to save knowledge base member") from exc
+
+
+def remove_knowledge_base_member(
+    session: Session,
+    *,
+    knowledge_base_id: UUID,
+    actor_external_id: str,
+    member_external_id: str,
+) -> None:
+    if not user_can_manage_knowledge_base(session, actor_external_id, knowledge_base_id):
+        raise PermissionError("Current user cannot manage this knowledge base")
+    try:
+        membership = session.scalar(
+            select(KnowledgeBaseMember)
+            .join(User, User.id == KnowledgeBaseMember.user_id)
+            .where(
+                KnowledgeBaseMember.knowledge_base_id == knowledge_base_id,
+                User.external_id == member_external_id,
+            )
+        )
+        if membership is not None:
+            session.delete(membership)
+            session.commit()
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to remove knowledge base member") from exc
+
+
+def user_can_view_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
+    return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) is not None
+
+
 def user_can_write_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
-    role = session.scalar(
+    return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) in WRITE_ROLES
+
+
+def user_can_manage_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
+    return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) in MANAGE_ROLES
+
+
+def _user_role_for_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> str | None:
+    return session.scalar(
         select(KnowledgeBaseMember.role)
         .join(User, User.id == KnowledgeBaseMember.user_id)
         .where(
@@ -90,7 +224,57 @@ def user_can_write_knowledge_base(session: Session, user_external_id: str, knowl
             User.external_id == user_external_id,
         )
     )
-    return role in WRITE_ROLES
+
+
+def visible_document_filter(user_external_id: str):
+    return (
+        select(DocumentPermission.id)
+        .join(User, User.id == DocumentPermission.user_id)
+        .where(DocumentPermission.document_id == KnowledgeDocument.id)
+        .exists()
+        .is_(False)
+    ) | (
+        select(DocumentPermission.id)
+        .join(User, User.id == DocumentPermission.user_id)
+        .where(
+            DocumentPermission.document_id == KnowledgeDocument.id,
+            User.external_id == user_external_id,
+            DocumentPermission.can_view.is_(True),
+        )
+        .exists()
+    )
+
+
+def grant_document_view_permission(
+    session: Session,
+    *,
+    document_id: UUID,
+    actor_external_id: str,
+    grantee_external_id: str,
+) -> dict[str, Any]:
+    document = session.get(KnowledgeDocument, document_id)
+    if document is None:
+        raise PermissionError("Document was not found")
+    if not user_can_manage_knowledge_base(session, actor_external_id, document.knowledge_base_id):
+        raise PermissionError("Current user cannot manage this document")
+    try:
+        user = ensure_user(session, grantee_external_id)
+        permission = session.scalar(
+            select(DocumentPermission).where(
+                DocumentPermission.document_id == document_id,
+                DocumentPermission.user_id == user.id,
+            )
+        )
+        if permission is None:
+            permission = DocumentPermission(document_id=document_id, user_id=user.id, can_view=True)
+            session.add(permission)
+        else:
+            permission.can_view = True
+        session.commit()
+        return {"document_id": str(document_id), "user_id": user.external_id, "can_view": True}
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to grant document permission") from exc
 
 
 def persist_document(
@@ -102,12 +286,15 @@ def persist_document(
     file_type: str,
     content: str,
     chunks: Iterable[dict[str, Any]],
+    knowledge_base_id: UUID | None = None,
 ) -> dict[str, Any]:
     """Store one parsed document and all of its retrievable chunks atomically."""
     try:
-        knowledge_base = ensure_local_knowledge_base(session, user_external_id)
+        knowledge_base = session.get(KnowledgeBase, knowledge_base_id) if knowledge_base_id else None
+        if knowledge_base is None:
+            knowledge_base = ensure_local_knowledge_base(session, user_external_id)
         if not user_can_write_knowledge_base(session, user_external_id, knowledge_base.id):
-            raise DatabaseUnavailableError("Current user cannot write to this knowledge base")
+            raise PermissionError("Current user cannot write to this knowledge base")
         document = KnowledgeDocument(
             knowledge_base_id=knowledge_base.id,
             title=title,
@@ -154,7 +341,7 @@ def load_document_records(session: Session, user_external_id: str | None = None)
                 statement.join(KnowledgeBase, KnowledgeBase.id == KnowledgeDocument.knowledge_base_id)
                 .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
                 .join(User, User.id == KnowledgeBaseMember.user_id)
-                .where(User.external_id == user_external_id)
+                .where(User.external_id == user_external_id, visible_document_filter(user_external_id))
             )
         documents = session.scalars(statement).all()
         return [document_to_record(document) for document in documents]
@@ -201,7 +388,7 @@ def list_document_summaries(session: Session, user_external_id: str | None = Non
                 statement.join(KnowledgeBase, KnowledgeBase.id == KnowledgeDocument.knowledge_base_id)
                 .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
                 .join(User, User.id == KnowledgeBaseMember.user_id)
-                .where(User.external_id == user_external_id)
+                .where(User.external_id == user_external_id, visible_document_filter(user_external_id))
             )
         rows = session.execute(statement).all()
         return [
@@ -267,6 +454,7 @@ def semantic_search_chunks(
     embedding = vector_literal(embed_query(question))
     membership_join = ""
     membership_filter = ""
+    document_acl_filter = ""
     params: dict[str, Any] = {"embedding": embedding, "limit": limit}
     if user_external_id is not None:
         membership_join = """
@@ -275,6 +463,21 @@ def semantic_search_chunks(
             JOIN users u ON u.id = kbm.user_id
         """
         membership_filter = "AND u.external_id = :user_external_id"
+        document_acl_filter = """
+            AND (
+                NOT EXISTS (
+                    SELECT 1 FROM document_permissions dp_all
+                    WHERE dp_all.document_id = d.id
+                )
+                OR EXISTS (
+                    SELECT 1 FROM document_permissions dp
+                    JOIN users du ON du.id = dp.user_id
+                    WHERE dp.document_id = d.id
+                    AND du.external_id = :user_external_id
+                    AND dp.can_view = true
+                )
+            )
+        """
         params["user_external_id"] = user_external_id
     rows = session.execute(
         text(
@@ -292,6 +495,7 @@ def semantic_search_chunks(
             {membership_join}
             WHERE dc.embedding IS NOT NULL
             {membership_filter}
+            {document_acl_filter}
             ORDER BY dc.embedding <=> CAST(:embedding AS vector)
             LIMIT :limit
             """
@@ -493,6 +697,21 @@ def document_to_record(document: KnowledgeDocument) -> dict[str, Any]:
             }
             for chunk in sorted(document.chunks, key=lambda item: item.chunk_index)
         ],
+    }
+
+
+def knowledge_base_to_record(knowledge_base: KnowledgeBase, role: str) -> dict[str, Any]:
+    return {
+        "id": str(knowledge_base.id),
+        "name": knowledge_base.name,
+        "owner_id": knowledge_base.owner_id,
+        "tenant_id": knowledge_base.tenant_id,
+        "department": knowledge_base.department,
+        "description": knowledge_base.description,
+        "role": role,
+        "can_write": role in WRITE_ROLES,
+        "can_manage": role in MANAGE_ROLES,
+        "created_at": knowledge_base.created_at.isoformat() if knowledge_base.created_at else None,
     }
 
 

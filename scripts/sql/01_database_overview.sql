@@ -15,8 +15,8 @@ select 'users' as table_name, count(*) as row_count from users
 union all select 'knowledge_bases', count(*) from knowledge_bases
 union all select 'knowledge_base_members', count(*) from knowledge_base_members
 union all select 'documents', count(*) from documents
+union all select 'document_permissions', count(*) from document_permissions
 union all select 'document_chunks', count(*) from document_chunks
 union all select 'workflow_runs', count(*) from workflow_runs
 union all select 'workflow_trace_steps', count(*) from workflow_trace_steps
 order by table_name;
-

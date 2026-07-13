@@ -9,6 +9,7 @@ EXPECTED_TABLES = (
     "knowledge_bases",
     "knowledge_base_members",
     "documents",
+    "document_permissions",
     "document_chunks",
     "workflow_runs",
     "workflow_trace_steps",

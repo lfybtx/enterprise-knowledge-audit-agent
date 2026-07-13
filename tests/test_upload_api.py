@@ -181,7 +181,9 @@ def test_invalid_bearer_token_is_rejected():
     assert response.status_code == 401
 
 
-def test_knowledge_bases_endpoint_returns_roles_for_current_user():
+def test_knowledge_bases_endpoint_returns_demo_roles_without_database(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
     response = client.get("/api/knowledge-bases", headers={"X-User-Id": "demo-alice"})
 
     assert response.status_code == 200

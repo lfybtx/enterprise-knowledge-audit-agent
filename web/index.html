@@ -103,6 +103,26 @@
         <div id="system-issues" class="system-issues"></div>
       </section>
 
+      <section class="permission-section">
+        <div class="section-heading">
+          <div>
+            <p class="panel-label">权限管理</p>
+            <h2>知识库成员</h2>
+          </div>
+        </div>
+        <div id="permission-members" class="member-list"></div>
+        <form id="member-form" class="member-form">
+          <input id="member-user-id" type="text" placeholder="用户 ID，例如 demo-bob" />
+          <select id="member-role">
+            <option value="viewer">viewer</option>
+            <option value="editor">editor</option>
+            <option value="owner">owner</option>
+          </select>
+          <button id="member-save" type="submit" class="secondary">保存成员</button>
+          <span id="member-status" class="upload-status" role="status"></span>
+        </form>
+      </section>
+
       <section id="empty" class="empty-state">运行一次审计后，这里会显示带证据回答、风险发现、引用证据和工作流 Trace。</section>
       <section id="results" hidden>
         <div class="results-toolbar">

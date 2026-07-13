@@ -97,9 +97,14 @@ function setWriteEnabled(enabled) {
 function applyPermissions() {
   const kb = currentKnowledgeBase();
   const canWrite = Boolean(kb?.can_write);
+  const canManage = Boolean(kb?.can_manage || kb?.role === "owner");
   $("#active-role").textContent = kb?.role || "-";
   $("#upload-status").textContent = canWrite ? "" : "当前角色没有上传权限";
   $("#url-ingest-status").textContent = canWrite ? "" : "当前角色没有网页入库权限";
+  $("#member-save").disabled = !canManage;
+  $("#member-user-id").disabled = !canManage;
+  $("#member-role").disabled = !canManage;
+  $("#member-status").textContent = canManage ? "" : "只有 owner 可以管理成员";
   setWriteEnabled(canWrite);
 }
 
@@ -285,6 +290,52 @@ async function refreshSystemStatus() {
   }
 }
 
+function renderKnowledgeBaseMembers(members) {
+  if (!members?.length) {
+    $("#permission-members").innerHTML = '<div class="document muted">当前知识库暂无可展示成员，或后端未启用数据库权限管理。</div>';
+    return;
+  }
+  $("#permission-members").innerHTML = members.map((member) => `
+    <div class="member-row">
+      <div>
+        <strong>${escapeHtml(member.display_name || member.user_id)}</strong>
+        <span>${escapeHtml(member.user_id)}</span>
+      </div>
+      <span>${escapeHtml(member.role)}</span>
+      <button type="button" class="secondary" data-remove-member="${escapeHtml(member.user_id)}">移除</button>
+    </div>
+  `).join("");
+  const canManage = Boolean(currentKnowledgeBase()?.can_manage || currentKnowledgeBase()?.role === "owner");
+  $("#permission-members").querySelectorAll("button[data-remove-member]").forEach((button) => {
+    button.disabled = !canManage;
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        await fetch(`/api/knowledge-bases/${encodeURIComponent(selectedKnowledgeBaseId)}/members/${encodeURIComponent(button.getAttribute("data-remove-member"))}`, {
+          method: "DELETE",
+          headers: authHeaders(),
+        });
+        await refreshMembers();
+      } catch (error) {
+        $("#member-status").textContent = error.message;
+      }
+    });
+  });
+}
+
+async function refreshMembers() {
+  if (!selectedKnowledgeBaseId) {
+    renderKnowledgeBaseMembers([]);
+    return;
+  }
+  try {
+    const members = await fetchJson(`/api/knowledge-bases/${encodeURIComponent(selectedKnowledgeBaseId)}/members`);
+    renderKnowledgeBaseMembers(members);
+  } catch (error) {
+    $("#permission-members").innerHTML = `<div class="document muted">${escapeHtml(error.message)}</div>`;
+  }
+}
+
 function renderRetrievalCandidates(retrieval) {
   const candidates = retrieval?.candidate_ranking;
   if (!Array.isArray(candidates) || !candidates.length) return "";
@@ -466,6 +517,7 @@ async function refreshOverview() {
   renderKnowledgeBaseOptions(kbList);
   selectedKnowledgeBaseId = $("#knowledge-base-select").value;
   applyPermissions();
+  await refreshMembers();
   $("#documents").innerHTML = documents.length
     ? documents.map((document) => `
         <div class="document">
@@ -698,9 +750,33 @@ async function switchKnowledgeBase() {
   await refreshOverview();
 }
 
+async function saveMember(event) {
+  event.preventDefault();
+  const userId = $("#member-user-id").value.trim();
+  const role = $("#member-role").value;
+  if (!userId || !selectedKnowledgeBaseId) return;
+  $("#member-save").disabled = true;
+  $("#member-status").textContent = "保存中...";
+  try {
+    await fetchJson(`/api/knowledge-bases/${encodeURIComponent(selectedKnowledgeBaseId)}/members`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, role }),
+    });
+    $("#member-user-id").value = "";
+    $("#member-status").textContent = "已保存成员";
+    await refreshOverview();
+  } catch (error) {
+    $("#member-status").textContent = error.message;
+  } finally {
+    applyPermissions();
+  }
+}
+
 $("#ask").addEventListener("click", ask);
 $("#upload-form").addEventListener("submit", uploadDocument);
 $("#url-ingest-form").addEventListener("submit", ingestUrlDocument);
+$("#member-form").addEventListener("submit", saveMember);
 $("#login-form").addEventListener("submit", login);
 $("#logout-button").addEventListener("click", logout);
 $("#refresh-system-status").addEventListener("click", refreshSystemStatus);

@@ -17,6 +17,7 @@ def test_database_health_formatter_marks_failures():
 
 def test_expected_tables_cover_core_data_model():
     assert "documents" in EXPECTED_TABLES
+    assert "document_permissions" in EXPECTED_TABLES
     assert "document_chunks" in EXPECTED_TABLES
     assert "workflow_runs" in EXPECTED_TABLES
     assert "workflow_trace_steps" in EXPECTED_TABLES
@@ -29,4 +30,3 @@ def test_sql_helper_files_are_present_and_non_empty():
     assert len(sql_files) >= 7
     for sql_file in sql_files:
         assert sql_file.read_text(encoding="utf-8").strip()
-

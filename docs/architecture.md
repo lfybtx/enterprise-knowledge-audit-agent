@@ -74,9 +74,10 @@ flowchart LR
 - `users`：用户。
 - `knowledge_bases`：知识库。
 - `knowledge_base_members`：用户和知识库的角色关系。
+- `document_permissions`：文档级 ACL，配置后可限制单文档只对指定用户可见。
 - `owner/editor/viewer`：角色分级。
 
-上传、文档列表、检索、导出、系统诊断都会根据当前用户过滤。Bob 作为 viewer，可以查看授权内容，但不能上传，也不能查看系统诊断。
+上传、文档列表、检索、导出、系统诊断都会根据当前用户过滤。Bob 作为 viewer，可以查看授权内容，但不能上传，也不能查看系统诊断。文档级 ACL 配置后会覆盖知识库默认可见范围：如果某文档存在 ACL 记录，则只有被授权用户可以检索到它。
 
 ## 可观测性
 
