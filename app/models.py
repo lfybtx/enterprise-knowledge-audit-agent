@@ -30,10 +30,19 @@ class KnowledgeBase(Base):
 
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint("role IN ('admin', 'user')", name="ck_users_role"),
+    )
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
     external_id: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    username: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
+    role: Mapped[str] = mapped_column(String(20), nullable=False, default="user")
+    tenant_id: Mapped[str] = mapped_column(String(100), nullable=False, default="tenant-demo")
+    department: Mapped[str] = mapped_column(String(100), nullable=False, default="general")
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     memberships: Mapped[list[KnowledgeBaseMember]] = relationship(back_populates="user", cascade="all, delete-orphan")

@@ -15,8 +15,8 @@
       </div>
       <div class="header-tools">
         <form id="login-form" class="login-form">
-          <input id="login-username" name="username" type="text" value="alice" autocomplete="username" aria-label="用户名" />
-          <input id="login-password" name="password" type="password" value="alice123456" autocomplete="current-password" aria-label="密码" />
+          <input id="login-username" name="username" type="text" value="admin" autocomplete="username" aria-label="用户名" />
+          <input id="login-password" name="password" type="password" value="admin123456" autocomplete="current-password" aria-label="密码" />
           <button id="login-button" type="submit" class="secondary">登录</button>
           <button id="logout-button" type="button" class="secondary" hidden>退出</button>
         </form>
@@ -31,144 +31,184 @@
         <span id="health" class="status">连接中</span>
       </div>
     </header>
+
     <main>
-      <section class="workspace">
-        <div class="question-panel">
-          <label for="question">向企业知识库提问</label>
-          <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
-          <div id="demo-questions" class="demo-questions" aria-label="演示问题"></div>
-          <div class="actions">
-            <button id="ask">运行审计</button>
-            <button id="example" class="secondary">加载冲突案例</button>
-          </div>
-          <p class="hint">系统只基于检索到的证据回答；如果证据不足，会给出保守结论，并保留引用和流程 Trace。</p>
-        </div>
-        <aside class="metrics">
-          <div><span>已索引文档</span><strong id="document-count">-</strong></div>
-          <div><span>当前用户</span><strong id="active-user">local-demo</strong></div>
-          <div><span>当前角色</span><strong id="active-role">owner</strong></div>
-          <div><span>审计记录</span><strong id="audit-count">0</strong></div>
-        </aside>
-      </section>
+      <nav class="tabs">
+        <button type="button" class="secondary active" data-tab="workspace">审计工作台</button>
+        <button type="button" class="secondary" data-tab="account">注册</button>
+        <button type="button" class="secondary" data-tab="admin" id="admin-tab" hidden>管理</button>
+      </nav>
 
-      <section class="upload-section">
-        <div>
-          <p class="panel-label">文档接入</p>
-          <h2>上传制度文档</h2>
-          <p class="hint">支持 TXT、文本型 PDF、扫描 PDF、Word、Excel 和网页 URL。viewer 角色只能查看，不能写入。</p>
-        </div>
-        <div class="intake-forms">
-          <form id="upload-form" class="upload-form">
-            <label for="knowledge-base-select">知识库</label>
-            <select id="knowledge-base-select" name="knowledge_base_id"></select>
-            <label for="upload-title">文档标题</label>
-            <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="客户数据导出制度" required />
-            <label for="upload-file">文档文件</label>
-            <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
+      <div data-page="workspace">
+        <section class="workspace">
+          <div class="question-panel">
+            <label for="question">向企业知识库提问</label>
+            <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
+            <div id="demo-questions" class="demo-questions" aria-label="演示问题"></div>
             <div class="actions">
-              <button id="upload-button" type="submit">上传并入库</button>
-              <span id="upload-status" class="upload-status" role="status"></span>
+              <button id="ask">运行审计</button>
+              <button id="example" class="secondary">加载冲突案例</button>
             </div>
+            <p class="hint">系统只基于当前用户可见知识库中的证据回答。</p>
+          </div>
+          <aside class="metrics">
+            <div><span>已索引文档</span><strong id="document-count">-</strong></div>
+            <div><span>当前用户</span><strong id="active-user">local-demo</strong></div>
+            <div><span>当前角色</span><strong id="active-role">owner</strong></div>
+            <div><span>审计记录</span><strong id="audit-count">0</strong></div>
+          </aside>
+        </section>
+
+        <section class="upload-section">
+          <div>
+            <p class="panel-label">文档接入</p>
+            <h2>上传制度文档</h2>
+            <p class="hint">非 admin 用户只能写入自己拥有 editor 或 owner 权限的知识库。</p>
+          </div>
+          <div class="intake-forms">
+            <form id="upload-form" class="upload-form">
+              <label for="knowledge-base-select">知识库</label>
+              <select id="knowledge-base-select" name="knowledge_base_id"></select>
+              <label for="upload-title">文档标题</label>
+              <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" required />
+              <label for="upload-file">文档文件</label>
+              <input id="upload-file" name="file" type="file" required />
+              <div class="actions">
+                <button id="upload-button" type="submit">上传并入库</button>
+                <span id="upload-status" class="upload-status" role="status"></span>
+              </div>
+            </form>
+            <form id="url-ingest-form" class="upload-form url-ingest-form">
+              <label for="url-title">网页标题</label>
+              <input id="url-title" name="title" type="text" minlength="2" maxlength="120" required />
+              <label for="url-input">网页 URL</label>
+              <input id="url-input" name="url" type="url" required />
+              <div class="actions">
+                <button id="url-ingest-button" type="submit">抓取网页</button>
+                <span id="url-ingest-status" class="upload-status" role="status"></span>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="evaluation-section">
+          <div>
+            <p class="panel-label">评测基线</p>
+            <h2>评测结果</h2>
+          </div>
+          <div id="evaluation-summary" class="evaluation-grid"></div>
+        </section>
+
+        <section id="empty" class="empty-state">运行一次审计后，这里会显示带证据回答、风险发现、引用证据和工作流 Trace。</section>
+        <section id="results" hidden>
+          <div class="results-grid">
+            <article class="answer">
+              <p class="panel-label">带证据回答</p>
+              <div id="answer"></div>
+            </article>
+            <article class="findings">
+              <p class="panel-label">风险发现</p>
+              <div id="findings"></div>
+            </article>
+          </div>
+          <article class="citations">
+            <p class="panel-label">检索证据</p>
+            <div id="citations"></div>
+          </article>
+          <article class="trace">
+            <p class="panel-label">工作流追踪</p>
+            <div id="trace"></div>
+          </article>
+        </section>
+
+        <section class="audit-history">
+          <div>
+            <p class="panel-label">审计历史</p>
+            <h2>最近的问答与导出</h2>
+          </div>
+          <div id="audit-history" class="audit-history-list"></div>
+        </section>
+
+        <section class="document-section">
+          <div>
+            <p class="panel-label">知识库内容</p>
+            <h2>当前可见文档</h2>
+          </div>
+          <div id="documents" class="document-list"></div>
+        </section>
+      </div>
+
+      <div data-page="account" hidden>
+        <section class="permission-section">
+          <div>
+            <p class="panel-label">注册</p>
+            <h2>创建普通用户</h2>
+          </div>
+          <form id="register-form" class="member-form">
+            <input id="register-username" type="text" placeholder="用户名" required />
+            <input id="register-password" type="password" placeholder="密码" minlength="6" required />
+            <input id="register-display-name" type="text" placeholder="显示名称" required />
+            <input id="register-department" type="text" placeholder="部门" />
+            <button id="register-button" type="submit" class="secondary">注册</button>
+            <span id="register-status" class="upload-status" role="status"></span>
           </form>
-          <form id="url-ingest-form" class="upload-form url-ingest-form">
-            <label for="url-title">网页标题</label>
-            <input id="url-title" name="title" type="text" minlength="2" maxlength="120" placeholder="公开合规说明" required />
-            <label for="url-input">网页 URL</label>
-            <input id="url-input" name="url" type="url" placeholder="https://example.com/policy.html" required />
-            <div class="actions">
-              <button id="url-ingest-button" type="submit">抓取网页</button>
-              <span id="url-ingest-status" class="upload-status" role="status"></span>
+        </section>
+      </div>
+
+      <div data-page="admin" hidden>
+        <section class="permission-section">
+          <div class="section-heading">
+            <div>
+              <p class="panel-label">权限管理</p>
+              <h2>知识库成员</h2>
             </div>
+          </div>
+          <div id="permission-members" class="member-list"></div>
+          <form id="member-form" class="member-form">
+            <select id="member-user-id"></select>
+            <select id="member-role">
+              <option value="viewer">viewer</option>
+              <option value="editor">editor</option>
+              <option value="owner">owner</option>
+            </select>
+            <button id="member-save" type="submit" class="secondary">保存成员</button>
+            <span id="member-status" class="upload-status" role="status"></span>
           </form>
-        </div>
-      </section>
+        </section>
 
-      <section class="evaluation-section">
-        <div>
-          <p class="panel-label">评测基线</p>
-          <h2>评测结果</h2>
-        </div>
-        <div id="evaluation-summary" class="evaluation-grid"></div>
-      </section>
-
-      <section class="system-section">
-        <div class="section-heading">
+        <section class="permission-section">
           <div>
-            <p class="panel-label">系统运维</p>
-            <h2>系统状态与索引诊断</h2>
+            <p class="panel-label">用户管理</p>
+            <h2>系统用户</h2>
           </div>
-          <button id="refresh-system-status" class="secondary" type="button">刷新状态</button>
-        </div>
-        <div id="system-status" class="system-status-grid"></div>
-        <div id="system-issues" class="system-issues"></div>
-      </section>
+          <form id="admin-user-form" class="member-form">
+            <input id="admin-username" type="text" placeholder="用户名" required />
+            <input id="admin-password" type="password" placeholder="密码" minlength="6" required />
+            <input id="admin-display-name" type="text" placeholder="显示名称" required />
+            <input id="admin-department" type="text" placeholder="部门" />
+            <select id="admin-user-role">
+              <option value="user">user</option>
+              <option value="admin">admin</option>
+            </select>
+            <button id="admin-user-save" type="submit" class="secondary">创建用户</button>
+            <span id="admin-user-status" class="upload-status" role="status"></span>
+          </form>
+          <div id="user-table" class="user-table"></div>
+        </section>
 
-      <section class="permission-section">
-        <div class="section-heading">
-          <div>
-            <p class="panel-label">权限管理</p>
-            <h2>知识库成员</h2>
+        <section class="system-section">
+          <div class="section-heading">
+            <div>
+              <p class="panel-label">系统运维</p>
+              <h2>系统状态与索引诊断</h2>
+            </div>
+            <button id="refresh-system-status" class="secondary" type="button">刷新状态</button>
           </div>
-        </div>
-        <div id="permission-members" class="member-list"></div>
-        <form id="member-form" class="member-form">
-          <input id="member-user-id" type="text" placeholder="用户 ID，例如 demo-bob" />
-          <select id="member-role">
-            <option value="viewer">viewer</option>
-            <option value="editor">editor</option>
-            <option value="owner">owner</option>
-          </select>
-          <button id="member-save" type="submit" class="secondary">保存成员</button>
-          <span id="member-status" class="upload-status" role="status"></span>
-        </form>
-      </section>
-
-      <section id="empty" class="empty-state">运行一次审计后，这里会显示带证据回答、风险发现、引用证据和工作流 Trace。</section>
-      <section id="results" hidden>
-        <div class="results-toolbar">
-          <span class="panel-label">导出报告</span>
-          <div class="actions">
-            <button id="export-md" class="secondary" type="button">Markdown</button>
-            <button id="export-pdf" class="secondary" type="button">PDF</button>
-          </div>
-        </div>
-        <div id="approval-panel" class="approval-panel" hidden></div>
-        <div class="results-grid">
-          <article class="answer">
-            <p class="panel-label">带证据回答</p>
-            <div id="answer"></div>
-          </article>
-          <article class="findings">
-            <p class="panel-label">风险发现</p>
-            <div id="findings"></div>
-          </article>
-        </div>
-        <article class="citations">
-          <p class="panel-label">检索证据</p>
-          <div id="citations"></div>
-        </article>
-        <article class="trace">
-          <p class="panel-label">工作流追踪</p>
-          <div id="trace"></div>
-        </article>
-      </section>
-
-      <section class="audit-history">
-        <div>
-          <p class="panel-label">审计历史</p>
-          <h2>最近的问答与导出</h2>
-        </div>
-        <div id="audit-history" class="audit-history-list"></div>
-      </section>
-
-      <section class="document-section">
-        <div>
-          <p class="panel-label">知识库内容</p>
-          <h2>当前知识库可见文档</h2>
-        </div>
-        <div id="documents" class="document-list"></div>
-      </section>
+          <div id="system-status" class="system-status-grid"></div>
+          <div id="system-issues" class="system-issues"></div>
+        </section>
+      </div>
     </main>
-    <script src="/static/app.js?v=20260713-cn-ui"></script>
+    <script src="/static/app.js?v=20260714-auth-admin"></script>
   </body>
 </html>

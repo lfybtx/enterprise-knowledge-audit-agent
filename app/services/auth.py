@@ -8,6 +8,7 @@ import os
 import time
 from dataclasses import dataclass
 from typing import Any, Optional
+from secrets import token_urlsafe
 
 
 class AuthError(RuntimeError):
@@ -25,15 +26,45 @@ class DemoAccount:
     role: str
 
 
-def _hash_password(password: str) -> str:
+PASSWORD_ITERATIONS = 120_000
+
+
+def hash_password(password: str, salt: str | None = None) -> str:
+    salt = salt or token_urlsafe(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), PASSWORD_ITERATIONS)
+    return f"pbkdf2_sha256${PASSWORD_ITERATIONS}${salt}${base64.urlsafe_b64encode(digest).decode('ascii')}"
+
+
+def verify_password(password: str, password_hash: str) -> bool:
+    try:
+        algorithm, iterations, salt, expected = password_hash.split("$", 3)
+    except ValueError:
+        return hmac.compare_digest(_legacy_hash_password(password), password_hash)
+    if algorithm != "pbkdf2_sha256":
+        return False
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt.encode("utf-8"), int(iterations))
+    actual = base64.urlsafe_b64encode(digest).decode("ascii")
+    return hmac.compare_digest(actual, expected)
+
+
+def _legacy_hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
 DEMO_ACCOUNTS: dict[str, DemoAccount] = {
+    "admin": DemoAccount(
+        user_id="admin",
+        username="admin",
+        password_hash=_legacy_hash_password("admin123456"),
+        display_name="Admin",
+        tenant_id="tenant-demo",
+        department="platform",
+        role="admin",
+    ),
     "local-demo": DemoAccount(
         user_id="local-demo",
         username="local-demo",
-        password_hash=_hash_password("demo123456"),
+        password_hash=_legacy_hash_password("demo123456"),
         display_name="Local Demo",
         tenant_id="tenant-demo",
         department="compliance",
@@ -42,7 +73,7 @@ DEMO_ACCOUNTS: dict[str, DemoAccount] = {
     "alice": DemoAccount(
         user_id="demo-alice",
         username="alice",
-        password_hash=_hash_password("alice123456"),
+        password_hash=_legacy_hash_password("alice123456"),
         display_name="Alice",
         tenant_id="tenant-demo",
         department="sales",
@@ -51,7 +82,7 @@ DEMO_ACCOUNTS: dict[str, DemoAccount] = {
     "bob": DemoAccount(
         user_id="demo-bob",
         username="bob",
-        password_hash=_hash_password("bob123456"),
+        password_hash=_legacy_hash_password("bob123456"),
         display_name="Bob",
         tenant_id="tenant-demo",
         department="legal",
@@ -64,7 +95,7 @@ def authenticate_demo_user(username: str, password: str) -> Optional[DemoAccount
     account = DEMO_ACCOUNTS.get(username.strip())
     if account is None:
         return None
-    if not hmac.compare_digest(account.password_hash, _hash_password(password)):
+    if not verify_password(password, account.password_hash):
         return None
     return account
 
@@ -73,14 +104,26 @@ def account_by_user_id(user_id: str) -> Optional[DemoAccount]:
     return next((account for account in DEMO_ACCOUNTS.values() if account.user_id == user_id), None)
 
 
-def create_access_token(account: DemoAccount, expires_in_seconds: int = 8 * 60 * 60) -> str:
+def create_access_token(account: DemoAccount | dict[str, Any], expires_in_seconds: int = 8 * 60 * 60) -> str:
     now = int(time.time())
+    if isinstance(account, dict):
+        user_id = str(account["user_id"])
+        display_name = str(account["display_name"])
+        tenant_id = str(account.get("tenant_id") or "tenant-demo")
+        department = str(account.get("department") or "general")
+        role = str(account.get("role") or "user")
+    else:
+        user_id = account.user_id
+        display_name = account.display_name
+        tenant_id = account.tenant_id
+        department = account.department
+        role = account.role
     payload = {
-        "sub": account.user_id,
-        "name": account.display_name,
-        "tenant_id": account.tenant_id,
-        "department": account.department,
-        "role": account.role,
+        "sub": user_id,
+        "name": display_name,
+        "tenant_id": tenant_id,
+        "department": department,
+        "role": role,
         "iat": now,
         "exp": now + expires_in_seconds,
     }

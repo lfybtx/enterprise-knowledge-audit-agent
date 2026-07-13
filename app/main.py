@@ -32,11 +32,13 @@ DEFAULT_USER_ID = "local-demo"
 USER_HEADER = "X-User-Id"
 KNOWLEDGE_BASE_HEADER = "X-Knowledge-Base-Id"
 DEMO_USERS = {
+    "admin": "Admin",
     "local-demo": "Local Demo",
     "demo-alice": "Alice",
     "demo-bob": "Bob",
 }
 DEMO_USER_ROLES = {
+    "admin": "admin",
     "local-demo": "owner",
     "demo-alice": "editor",
     "demo-bob": "viewer",
@@ -48,6 +50,11 @@ DEMO_KNOWLEDGE_BASES = [
     {"id": "kb-bob", "name": "Bob Review KB"},
 ]
 DEMO_KNOWLEDGE_BASE_ROLES = {
+    "admin": {
+        "kb-shared": "owner",
+        "kb-alice": "owner",
+        "kb-bob": "owner",
+    },
     "local-demo": {
         "kb-shared": "owner",
         "kb-alice": "editor",
@@ -114,6 +121,26 @@ class DocumentPermissionRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str = Field(min_length=2, max_length=80)
     password: str = Field(min_length=6, max_length=120)
+
+
+class RegisterRequest(BaseModel):
+    username: str = Field(min_length=2, max_length=80)
+    password: str = Field(min_length=6, max_length=120)
+    display_name: str = Field(min_length=2, max_length=120)
+    tenant_id: str = Field(default="tenant-demo", min_length=2, max_length=100)
+    department: str = Field(default="general", min_length=2, max_length=100)
+
+
+class UserCreateRequest(RegisterRequest):
+    role: str = Field(default="user", pattern="^(admin|user)$")
+
+
+class UserUpdateRequest(BaseModel):
+    display_name: Optional[str] = Field(default=None, min_length=2, max_length=120)
+    role: Optional[str] = Field(default=None, pattern="^(admin|user)$")
+    tenant_id: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    department: Optional[str] = Field(default=None, min_length=2, max_length=100)
+    is_active: Optional[bool] = None
 
 
 class AuthenticatedUser(BaseModel):
@@ -212,14 +239,24 @@ def get_authenticated_user(
             payload = verify_access_token(token.strip())
         except AuthError as error:
             raise HTTPException(status_code=401, detail=str(error)) from error
-        user_id = require_user_id(str(payload["sub"]))
-        account = account_by_user_id(user_id)
+        user_id = str(payload["sub"])
+        account = database_account_by_user_id(user_id) or account_by_user_id(user_id)
+        if account is None:
+            raise HTTPException(status_code=401, detail="Unknown user")
+        if isinstance(account, dict):
+            display_name = str(account["display_name"])
+            role = str(account["role"])
+            department = str(account["department"])
+        else:
+            display_name = account.display_name
+            role = account.role
+            department = account.department
         return AuthenticatedUser(
             id=user_id,
-            display_name=str(payload.get("name") or DEMO_USERS[user_id]),
-            role=str(payload.get("role") or DEMO_USER_ROLES[user_id]),
+            display_name=str(payload.get("name") or display_name),
+            role=str(payload.get("role") or role),
             tenant_id=str(payload.get("tenant_id") or "tenant-demo"),
-            department=str(payload.get("department") or account.department if account else "general"),
+            department=str(payload.get("department") or department),
             auth_mode="jwt",
         )
 
@@ -236,9 +273,37 @@ def get_authenticated_user(
 
 
 def require_write_access(user_external_id: str) -> None:
+    if DEMO_USER_ROLES.get(user_external_id) == "admin":
+        return
+    session = database_session()
+    if session is not None:
+        try:
+            from app.repositories.knowledge_repository import is_admin_user
+
+            if is_admin_user(session, user_external_id):
+                return
+        finally:
+            session.close()
     role = DEMO_USER_ROLES.get(user_external_id)
     if role not in WRITE_ROLES:
         raise HTTPException(status_code=403, detail="Current user cannot write to this knowledge base")
+
+
+def database_account_by_user_id(user_external_id: str) -> dict[str, Any] | None:
+    session = database_session()
+    if session is None:
+        return None
+    try:
+        from app.repositories.knowledge_repository import get_user_account
+
+        return get_user_account(session, user_external_id)
+    finally:
+        session.close()
+
+
+def require_admin(current_user: AuthenticatedUser) -> None:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin privileges are required")
 
 
 def knowledge_bases_for_user(user_external_id: str) -> list[dict[str, object]]:
@@ -538,8 +603,7 @@ def get_model_config() -> dict[str, object]:
 
 @app.get("/api/admin/system-status")
 def get_system_status(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, object]:
-    if current_user.role not in WRITE_ROLES:
-        raise HTTPException(status_code=403, detail="Current role cannot view system diagnostics")
+    require_admin(current_user)
     try:
         model_status = ModelProviderSettings.from_environment().public_status()
     except ModelConfigurationError as error:
@@ -598,22 +662,66 @@ def get_system_status(current_user: AuthenticatedUser = Depends(get_authenticate
 
 @app.post("/api/auth/login")
 def login(payload: LoginRequest) -> dict[str, object]:
-    account = authenticate_demo_user(payload.username, payload.password)
+    account = None
+    session = database_session()
+    if session is not None:
+        try:
+            from app.repositories.knowledge_repository import authenticate_database_user
+
+            account = authenticate_database_user(session, payload.username, payload.password)
+        finally:
+            session.close()
+    if account is None:
+        account = authenticate_demo_user(payload.username, payload.password)
     if account is None:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token(account)
-    return {
-        "access_token": token,
-        "token_type": "bearer",
-        "expires_in": 8 * 60 * 60,
-        "user": {
+    if isinstance(account, dict):
+        user_payload = {
+            "id": account["user_id"],
+            "display_name": account["display_name"],
+            "role": account["role"],
+            "tenant_id": account["tenant_id"],
+            "department": account["department"],
+        }
+    else:
+        user_payload = {
             "id": account.user_id,
             "display_name": account.display_name,
             "role": account.role,
             "tenant_id": account.tenant_id,
             "department": account.department,
-        },
+        }
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "expires_in": 8 * 60 * 60,
+        "user": user_payload,
     }
+
+
+@app.post("/api/auth/register", status_code=201)
+def register(payload: RegisterRequest) -> dict[str, object]:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Registration requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import create_user_record
+
+        user = create_user_record(
+            session,
+            username=payload.username,
+            password=payload.password,
+            display_name=payload.display_name,
+            role="user",
+            tenant_id=payload.tenant_id,
+            department=payload.department,
+        )
+        return user
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    finally:
+        session.close()
 
 
 @app.get("/api/me")
@@ -626,6 +734,73 @@ def get_current_user(current_user: AuthenticatedUser = Depends(get_authenticated
         "department": current_user.department,
         "auth_mode": current_user.auth_mode,
     }
+
+
+@app.get("/api/users")
+def list_users(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> list[dict[str, object]]:
+    session = database_session()
+    if session is None:
+        fallback = [
+            {
+                "external_id": user_id,
+                "username": user_id,
+                "display_name": name,
+                "role": DEMO_USER_ROLES.get(user_id, "user"),
+                "is_active": True,
+            }
+            for user_id, name in DEMO_USERS.items()
+        ]
+        return fallback
+    try:
+        from app.repositories.knowledge_repository import list_user_records
+
+        return list_user_records(session)
+    finally:
+        session.close()
+
+
+@app.post("/api/admin/users", status_code=201)
+def create_user(payload: UserCreateRequest, current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, object]:
+    require_admin(current_user)
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="User management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import create_user_record
+
+        return create_user_record(
+            session,
+            username=payload.username,
+            password=payload.password,
+            display_name=payload.display_name,
+            role=payload.role,
+            tenant_id=payload.tenant_id,
+            department=payload.department,
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    finally:
+        session.close()
+
+
+@app.patch("/api/admin/users/{user_id}")
+def update_user(
+    user_id: str,
+    payload: UserUpdateRequest,
+    current_user: AuthenticatedUser = Depends(get_authenticated_user),
+) -> dict[str, object]:
+    require_admin(current_user)
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="User management requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import update_user_record
+
+        return update_user_record(session, external_id=user_id, **payload.model_dump(exclude_unset=True))
+    except ValueError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    finally:
+        session.close()
 
 
 @app.get("/api/knowledge-bases")
@@ -648,7 +823,7 @@ def create_kb(
     payload: KnowledgeBaseCreateRequest,
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> dict[str, object]:
-    if current_user.role not in WRITE_ROLES:
+    if current_user.role not in WRITE_ROLES and current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Current role cannot create knowledge bases")
     session = database_session()
     if session is None:
@@ -932,10 +1107,12 @@ def ask(
 
 @app.get("/api/audit-log")
 def get_audit_log(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> list[dict[str, object]]:
-    persisted_audit_log = load_persisted_audit_log(current_user.id)
+    persisted_audit_log = load_persisted_audit_log(None if current_user.role == "admin" else current_user.id)
     if persisted_audit_log is not None:
         return persisted_audit_log
-    visible_events = [event for event in audit_log if event.get("user_id", DEFAULT_USER_ID) == current_user.id]
+    visible_events = audit_log if current_user.role == "admin" else [
+        event for event in audit_log if event.get("user_id", DEFAULT_USER_ID) == current_user.id
+    ]
     return visible_events[-50:]
 
 

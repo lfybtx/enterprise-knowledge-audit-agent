@@ -19,6 +19,7 @@ from app.models import (
     WorkflowTraceStep,
 )
 from app.services.embeddings import embed_query, embed_text, embed_texts
+from app.services.auth import hash_password, verify_password
 from app.services.reranking import rerank_candidates
 from app.services.retrieval import HybridRetriever, RetrievedChunk
 from app.vector_utils import vector_literal
@@ -41,10 +42,143 @@ class WorkflowReviewError(RuntimeError):
 def ensure_user(session: Session, external_id: str, display_name: str | None = None) -> User:
     user = session.scalar(select(User).where(User.external_id == external_id))
     if user is None:
-        user = User(external_id=external_id, display_name=display_name or external_id)
+        user = User(
+            external_id=external_id,
+            username=external_id,
+            password_hash=hash_password("disabled-login"),
+            display_name=display_name or external_id,
+            role="user",
+        )
         session.add(user)
         session.flush()
     return user
+
+
+def user_to_record(user: User) -> dict[str, Any]:
+    return {
+        "id": str(user.id),
+        "external_id": user.external_id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": user.role,
+        "tenant_id": user.tenant_id,
+        "department": user.department,
+        "is_active": user.is_active,
+        "created_at": user.created_at.isoformat() if user.created_at else None,
+    }
+
+
+def auth_account_record(user: User) -> dict[str, Any]:
+    return {
+        "user_id": user.external_id,
+        "username": user.username,
+        "display_name": user.display_name,
+        "role": user.role,
+        "tenant_id": user.tenant_id,
+        "department": user.department,
+    }
+
+
+def authenticate_database_user(session: Session, username: str, password: str) -> dict[str, Any] | None:
+    try:
+        user = session.scalar(select(User).where(User.username == username.strip()))
+        if user is None or not user.is_active:
+            return None
+        if not verify_password(password, user.password_hash):
+            return None
+        return auth_account_record(user)
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to authenticate database user") from exc
+
+
+def get_user_account(session: Session, external_id: str) -> dict[str, Any] | None:
+    try:
+        user = session.scalar(select(User).where(User.external_id == external_id, User.is_active.is_(True)))
+        return auth_account_record(user) if user is not None else None
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to load user account") from exc
+
+
+def list_user_records(session: Session) -> list[dict[str, Any]]:
+    try:
+        users = session.scalars(select(User).order_by(User.created_at, User.username)).all()
+        return [user_to_record(user) for user in users]
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to list users") from exc
+
+
+def create_user_record(
+    session: Session,
+    *,
+    username: str,
+    password: str,
+    display_name: str,
+    role: str = "user",
+    tenant_id: str = "tenant-demo",
+    department: str = "general",
+) -> dict[str, Any]:
+    if role not in {"admin", "user"}:
+        raise ValueError("Invalid user role")
+    normalized = username.strip()
+    if session.scalar(select(User.id).where(User.username == normalized)) is not None:
+        raise ValueError("Username already exists")
+    if session.scalar(select(User.id).where(User.external_id == normalized)) is not None:
+        raise ValueError("User id already exists")
+    try:
+        user = User(
+            external_id=normalized,
+            username=normalized,
+            password_hash=hash_password(password),
+            display_name=display_name,
+            role=role,
+            tenant_id=tenant_id,
+            department=department,
+            is_active=True,
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user_to_record(user)
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to create user") from exc
+
+
+def update_user_record(
+    session: Session,
+    *,
+    external_id: str,
+    display_name: str | None = None,
+    role: str | None = None,
+    tenant_id: str | None = None,
+    department: str | None = None,
+    is_active: bool | None = None,
+) -> dict[str, Any]:
+    try:
+        user = session.scalar(select(User).where(User.external_id == external_id))
+        if user is None:
+            raise ValueError("User was not found")
+        if role is not None:
+            if role not in {"admin", "user"}:
+                raise ValueError("Invalid user role")
+            user.role = role
+        if display_name is not None:
+            user.display_name = display_name
+        if tenant_id is not None:
+            user.tenant_id = tenant_id
+        if department is not None:
+            user.department = department
+        if is_active is not None:
+            user.is_active = is_active
+        session.commit()
+        session.refresh(user)
+        return user_to_record(user)
+    except SQLAlchemyError as exc:
+        session.rollback()
+        raise DatabaseUnavailableError("Unable to update user") from exc
 
 
 def ensure_knowledge_base_membership(
@@ -114,6 +248,11 @@ def create_knowledge_base(
 
 def list_knowledge_base_records(session: Session, user_external_id: str) -> list[dict[str, Any]]:
     try:
+        if is_admin_user(session, user_external_id):
+            knowledge_bases = session.scalars(
+                select(KnowledgeBase).order_by(KnowledgeBase.created_at, KnowledgeBase.name)
+            ).all()
+            return [knowledge_base_to_record(knowledge_base, "admin") for knowledge_base in knowledge_bases]
         rows = session.execute(
             select(KnowledgeBase, KnowledgeBaseMember.role)
             .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
@@ -161,13 +300,17 @@ def upsert_knowledge_base_member(
 ) -> dict[str, Any]:
     if role not in {"owner", "editor", "viewer"}:
         raise ValueError("Invalid role")
+    if role == "owner" and not is_admin_user(session, actor_external_id):
+        raise PermissionError("Only admin can assign owner role")
     if not user_can_manage_knowledge_base(session, actor_external_id, knowledge_base_id):
         raise PermissionError("Current user cannot manage this knowledge base")
     try:
         knowledge_base = session.get(KnowledgeBase, knowledge_base_id)
         if knowledge_base is None:
             raise PermissionError("Knowledge base was not found")
-        user = ensure_user(session, member_external_id)
+        user = session.scalar(select(User).where(User.external_id == member_external_id, User.is_active.is_(True)))
+        if user is None:
+            raise ValueError("Member must be an active database user")
         membership = ensure_knowledge_base_membership(session, knowledge_base=knowledge_base, user=user, role=role)
         membership.role = role
         session.commit()
@@ -184,6 +327,8 @@ def remove_knowledge_base_member(
     actor_external_id: str,
     member_external_id: str,
 ) -> None:
+    if actor_external_id == member_external_id:
+        raise PermissionError("You cannot remove yourself from a knowledge base")
     if not user_can_manage_knowledge_base(session, actor_external_id, knowledge_base_id):
         raise PermissionError("Current user cannot manage this knowledge base")
     try:
@@ -204,15 +349,33 @@ def remove_knowledge_base_member(
 
 
 def user_can_view_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
+    if is_admin_user(session, user_external_id):
+        return True
     return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) is not None
 
 
 def user_can_write_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
+    if is_admin_user(session, user_external_id):
+        return True
     return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) in WRITE_ROLES
 
 
 def user_can_manage_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> bool:
+    if is_admin_user(session, user_external_id):
+        return True
     return _user_role_for_knowledge_base(session, user_external_id, knowledge_base_id) in MANAGE_ROLES
+
+
+def is_admin_user(session: Session, user_external_id: str) -> bool:
+    return bool(
+        session.scalar(
+            select(User.id).where(
+                User.external_id == user_external_id,
+                User.role == "admin",
+                User.is_active.is_(True),
+            )
+        )
+    )
 
 
 def _user_role_for_knowledge_base(session: Session, user_external_id: str, knowledge_base_id: UUID) -> str | None:
@@ -336,7 +499,7 @@ def load_document_records(session: Session, user_external_id: str | None = None)
             .options(selectinload(KnowledgeDocument.chunks), selectinload(KnowledgeDocument.knowledge_base))
             .order_by(KnowledgeDocument.created_at, KnowledgeDocument.id)
         )
-        if user_external_id is not None:
+        if user_external_id is not None and not is_admin_user(session, user_external_id):
             statement = (
                 statement.join(KnowledgeBase, KnowledgeBase.id == KnowledgeDocument.knowledge_base_id)
                 .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
@@ -383,7 +546,7 @@ def list_document_summaries(session: Session, user_external_id: str | None = Non
             .group_by(KnowledgeDocument.id)
             .order_by(KnowledgeDocument.created_at, KnowledgeDocument.id)
         )
-        if user_external_id is not None:
+        if user_external_id is not None and not is_admin_user(session, user_external_id):
             statement = (
                 statement.join(KnowledgeBase, KnowledgeBase.id == KnowledgeDocument.knowledge_base_id)
                 .join(KnowledgeBaseMember, KnowledgeBaseMember.knowledge_base_id == KnowledgeBase.id)
@@ -456,7 +619,7 @@ def semantic_search_chunks(
     membership_filter = ""
     document_acl_filter = ""
     params: dict[str, Any] = {"embedding": embedding, "limit": limit}
-    if user_external_id is not None:
+    if user_external_id is not None and not is_admin_user(session, user_external_id):
         membership_join = """
             JOIN knowledge_bases kb ON kb.id = d.knowledge_base_id
             JOIN knowledge_base_members kbm ON kbm.knowledge_base_id = kb.id
@@ -709,8 +872,8 @@ def knowledge_base_to_record(knowledge_base: KnowledgeBase, role: str) -> dict[s
         "department": knowledge_base.department,
         "description": knowledge_base.description,
         "role": role,
-        "can_write": role in WRITE_ROLES,
-        "can_manage": role in MANAGE_ROLES,
+        "can_write": role == "admin" or role in WRITE_ROLES,
+        "can_manage": role == "admin" or role in MANAGE_ROLES,
         "created_at": knowledge_base.created_at.isoformat() if knowledge_base.created_at else None,
     }
 

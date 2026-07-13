@@ -31,7 +31,7 @@ def test_model_config_does_not_expose_api_key(monkeypatch):
     assert "chat-secret-value" not in response.text
 
 
-def test_system_status_requires_write_role():
+def test_system_status_requires_admin_role():
     response = client.get("/api/admin/system-status", headers={"X-User-Id": "demo-bob"})
 
     assert response.status_code == 403
@@ -40,7 +40,7 @@ def test_system_status_requires_write_role():
 def test_system_status_returns_fallback_counts_without_database(monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
 
-    response = client.get("/api/admin/system-status", headers={"X-User-Id": "demo-alice"})
+    response = client.get("/api/admin/system-status", headers={"X-User-Id": "admin"})
     payload = response.json()
 
     assert response.status_code == 200
