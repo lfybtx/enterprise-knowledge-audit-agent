@@ -748,7 +748,25 @@ def _candidate_ranking(
 def database_is_ready(session: Session) -> bool:
     try:
         session.execute(text("SELECT 1"))
-        return True
+        required_user_columns = {
+            "external_id",
+            "username",
+            "password_hash",
+            "display_name",
+            "role",
+            "tenant_id",
+            "department",
+            "is_active",
+        }
+        available_user_columns = set(
+            session.scalars(
+                text(
+                    "SELECT column_name FROM information_schema.columns "
+                    "WHERE table_schema = current_schema() AND table_name = 'users'"
+                )
+            ).all()
+        )
+        return required_user_columns.issubset(available_user_columns)
     except SQLAlchemyError:
         session.rollback()
         return False
