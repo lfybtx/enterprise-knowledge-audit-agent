@@ -51,7 +51,12 @@ async function fetchJson(url, options = {}) {
     syncAuthUi();
     applyPermissions();
   }
-  if (!response.ok) throw new Error(payload.detail || "请求失败");
+  if (!response.ok) {
+    const detail = Array.isArray(payload.detail)
+      ? payload.detail.map((item) => `${item.loc?.join(".") || "请求"}: ${item.msg}`).join("；")
+      : payload.detail;
+    throw new Error(detail || "请求失败");
+  }
   return payload;
 }
 

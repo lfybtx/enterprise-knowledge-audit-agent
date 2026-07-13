@@ -86,7 +86,7 @@ class RegisterRequest(BaseModel):
     password: str = Field(min_length=6, max_length=120)
     display_name: str = Field(min_length=2, max_length=120)
     tenant_id: str = Field(default="tenant-demo", min_length=2, max_length=100)
-    department: str = Field(default="general", min_length=2, max_length=100)
+    department: str = Field(default="general", max_length=100)
 
 
 class UserCreateRequest(RegisterRequest):
@@ -599,7 +599,7 @@ def register(payload: RegisterRequest) -> dict[str, object]:
             display_name=payload.display_name,
             role="user",
             tenant_id=payload.tenant_id,
-            department=payload.department,
+            department=payload.department.strip() or "general",
         )
         return user
     except ValueError as error:
@@ -649,7 +649,7 @@ def create_user(payload: UserCreateRequest, current_user: AuthenticatedUser = De
             display_name=payload.display_name,
             role=payload.role,
             tenant_id=payload.tenant_id,
-            department=payload.department,
+            department=payload.department.strip() or "general",
         )
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

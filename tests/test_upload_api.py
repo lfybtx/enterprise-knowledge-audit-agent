@@ -159,6 +159,33 @@ def test_login_does_not_fall_back_to_demo_accounts(monkeypatch):
     assert response.status_code == 401
 
 
+def test_registration_accepts_empty_department_when_database_is_available(monkeypatch):
+    pytest.importorskip("sqlalchemy")
+
+    class Session:
+        def close(self):
+            pass
+
+    captured = {}
+    session = Session()
+    monkeypatch.setattr(main, "database_session", lambda: session)
+
+    from app.repositories import knowledge_repository
+
+    def create_user(_session, **kwargs):
+        captured.update(kwargs)
+        return {"external_id": kwargs["username"]}
+
+    monkeypatch.setattr(knowledge_repository, "create_user_record", create_user)
+    response = client.post(
+        "/api/auth/register",
+        json={"username": "new-user", "password": "secret123", "display_name": "New User", "department": ""},
+    )
+
+    assert response.status_code == 201
+    assert captured["department"] == "general"
+
+
 def test_invalid_login_is_rejected():
     response = client.post("/api/auth/login", json={"username": "alice", "password": "wrong-password"})
 
