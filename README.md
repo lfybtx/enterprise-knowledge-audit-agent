@@ -1,125 +1,104 @@
-# Enterprise Knowledge Audit Agent
+# 企业知识库审计 Agent
 
-An auditable knowledge-base Agent for enterprise policies, contracts, sales playbooks, and compliance documents. It answers questions with source evidence, identifies policy conflicts, produces risk findings, and records workflow traces.
+这是一个面向合规、客服、售前、法务场景的企业知识库审计 Agent。用户上传制度、合同、产品资料后，系统不仅回答问题，还会返回证据引用、识别制度冲突、生成风险清单，并记录完整工作流 Trace。
 
-![Project interface](docs/screenshot-placeholder.png)
+![项目界面](docs/screenshot-placeholder.png)
 
-> The preview image can be regenerated with `python scripts/make_readme_screenshot.py`. The app runs without an API key by using local hybrid retrieval and evidence-grounded answers.
+## 项目定位
 
-## Why This Project
+这个项目不是简单的“文档问答 Demo”，而是围绕企业 RAG 落地常见要求做的一套完整工程样例：
 
-- **Grounded answers**: every answer is derived from retrieved source chunks.
-- **Hybrid retrieval**: combines lexical matching and local vector scoring.
-- **Precise citations**: keeps page, paragraph, table, sheet, row, or line metadata.
-- **Audit workflow**: separates retrieval, audit analysis, and report generation.
-- **Evaluation**: includes 50 labeled cases with reproducible metrics.
-- **Observability**: records prompts, tool calls, duration, token estimates, status, and failures.
-- **Access control**: demo users only see their own uploaded knowledge base content.
-- **Deployable**: includes FastAPI, PostgreSQL/pgvector migrations, Docker Compose, and tests.
+- 文档解析：支持 `.txt`、文本型 PDF、扫描 PDF OCR、`.docx`、`.xlsx`、网页 URL。
+- RAG 检索：关键词检索 + pgvector 向量检索 + 融合排序 + 本地 reranker。
+- 证据引用：保留页码、段落、行号、表格、Sheet、Row 等来源信息。
+- 多 Agent 工作流：检索 Agent、审计 Agent、报告 Agent、人工确认节点。
+- 结构化风险报告：风险等级、依据、建议动作、引用来源。
+- 权限隔离：JWT 登录，演示用户只能访问自己有权限的知识库。
+- 可观测性：记录 prompt、工具调用、耗时、token 估算、失败原因、LLM fallback。
+- 可评测：内置 60 条评测用例和可复现评测结果。
+- 可部署：FastAPI + PostgreSQL/pgvector + MinIO + Docker Compose 一键启动。
 
-## Current Baseline
+## 技术栈
 
-| Metric | Result |
+| 模块 | 技术 |
 | --- | --- |
-| Cases | 60 |
+| 后端 API | Python, FastAPI |
+| 数据库 | PostgreSQL 16, pgvector, SQLAlchemy, Alembic |
+| 对象存储 | MinIO |
+| Agent 编排 | LangGraph |
+| 文档解析 | pypdf, pdf2image, Tesseract OCR, python-docx, openpyxl |
+| Embedding | 本地 `BAAI/bge-small-zh-v1.5`，也支持 OpenAI-compatible embedding |
+| Reranker | 本地 `BAAI/bge-reranker-base` |
+| LLM | 本地规则 fallback，支持 DeepSeek / Ollama / LM Studio 等 OpenAI-compatible Chat API |
+| 前端 | 原生 HTML/CSS/JavaScript |
+| 部署 | Docker Compose |
+| 测试 | pytest |
+
+## 当前评测基线
+
+| 指标 | 结果 |
+| --- | --- |
+| 评测用例数 | 60 |
 | Recall@1 | 96.7% |
 | Recall@3 | 100.0% |
-| Citation accuracy | 96.7% |
-| Answer quality pass rate | 100.0% |
-| Risk type accuracy | 90.0% |
-| Conflict accuracy | 100.0% |
-| Evidence binding accuracy | 100.0% |
-| Review trigger accuracy | 100.0% |
+| 引用准确率 | 96.7% |
+| 回答质量通过率 | 100.0% |
+| 风险类型准确率 | 90.0% |
+| 冲突识别准确率 | 100.0% |
+| 证据绑定准确率 | 100.0% |
+| 审批触发准确率 | 100.0% |
 
-Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
+详细报告：[docs/evaluation-report.md](docs/evaluation-report.md)
 
-## Features
+## Docker 一键启动
 
-| Capability | Implementation |
-| --- | --- |
-| Upload and parsing | `.txt`, text-based PDF, scanned PDF OCR, `.docx`, `.xlsx`, HTML URL ingestion |
-| Chunking | Source-aware chunks with location metadata |
-| Retrieval | Keyword score + local vector cosine score; PostgreSQL path supports pgvector |
-| Citations | Title, source path, excerpt, score, and location label |
-| Audit findings | Sensitive export risk, incident response, and legacy-policy conflicts |
-| Optional LLM synthesis | OpenAI-compatible Chat endpoint with strict JSON validation and rule-based fallback |
-| Report export | JSON, Markdown, and Unicode-capable PDF |
-| Audit history | Workflow traces persisted in PostgreSQL when Docker stack is used |
-| Permissions | JWT login with `X-User-Id` demo fallback |
-| Object storage | MinIO bucket for uploaded source files, with local disk fallback |
-| Evaluation | 60 cases, risk metrics, JSON results, Markdown report, and UI baseline panel |
-
-## Run Locally
-
-Requires Python 3.9+.
-
-```bash
-python -m venv .venv
-.venv\Scripts\activate
-python -m pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-Open `http://127.0.0.1:8000`.
-
-For direct host-side PostgreSQL or Alembic work, install the optional database dependencies:
-
-```bash
-python -m pip install -r requirements-db.txt
-```
-
-### Model Provider Modes
-
-The embedding provider and chat provider are configured separately. The default
-`.env` setting is `MODEL_PROVIDER=local-hf`. It downloads the
-open-source `BAAI/bge-small-zh-v1.5` embedding model and
-`BAAI/bge-reranker-base` reranker into `data/models` on first use, then runs
-locally without an API key. This is the recommended mode for Chinese
-enterprise-document retrieval. Use `MODEL_PROVIDER=local` only for the
-deterministic, dependency-free test fallback.
-
-For a host-side Windows run, install the CPU runtime first, then the local
-model dependency:
+先复制环境变量文件：
 
 ```powershell
-.\.venv\Scripts\python.exe -m pip install torch==2.5.1+cpu --index-url https://download.pytorch.org/whl/cpu
-.\.venv\Scripts\python.exe -m pip install -r requirements-local-models.txt
+copy .env.example .env
 ```
 
-Docker performs the same CPU-only installation during `docker compose build`.
-After the image is built, download and cache the model explicitly with:
-
-```bash
-docker compose run --rm app python scripts/download_local_model.py
-```
-
-To use a local chat LLM with Ollama, keep local embeddings enabled and turn on
-the chat provider only:
+启动服务：
 
 ```powershell
-ollama pull qwen2.5:7b-instruct
+docker compose up -d --build
 ```
 
-```env
-MODEL_PROVIDER=local-hf
-CHAT_PROVIDER=openai-compatible
-CHAT_OPENAI_BASE_URL=http://host.docker.internal:11434/v1
-CHAT_OPENAI_API_KEY=ollama
-CHAT_OPENAI_MODEL=qwen2.5:7b-instruct
+打开浏览器：
+
+```text
+http://127.0.0.1:8000
 ```
 
-For LM Studio, start the local OpenAI-compatible server and use:
+Docker Compose 会启动：
 
-```env
-MODEL_PROVIDER=local-hf
-CHAT_PROVIDER=openai-compatible
-CHAT_OPENAI_BASE_URL=http://host.docker.internal:1234/v1
-CHAT_OPENAI_API_KEY=lm-studio
-CHAT_OPENAI_MODEL=<loaded-model-id>
+- `app`：FastAPI 应用，端口 `8000`
+- `db`：PostgreSQL + pgvector，端口 `5432`
+- `minio`：对象存储，端口 `9000/9001`
+
+MinIO 控制台：
+
+```text
+http://127.0.0.1:9001
+账号：minioadmin
+密码：minioadmin
 ```
 
-To use DeepSeek for remote chat synthesis, keep local embeddings enabled and
-set only the chat provider:
+## 演示账号
+
+| 用户 | 密码 | 角色 | 说明 |
+| --- | --- | --- | --- |
+| `alice` | `alice123456` | editor | 可上传、可审计、可审批自己的审计记录 |
+| `bob` | `bob123456` | viewer | 只读用户，用来演示权限隔离 |
+| Header 模式 | `X-User-Id: local-demo` | owner | 本地调试和默认演示用户 |
+
+前端也保留了演示用户切换器，方便展示 Alice / Bob 权限差异。
+
+## DeepSeek 接入
+
+默认模式不需要 API Key：embedding 和 reranker 使用本地开源模型，回答生成有规则 fallback。
+
+如果要接入 DeepSeek，只修改 `.env`：
 
 ```env
 MODEL_PROVIDER=local-hf
@@ -129,196 +108,153 @@ CHAT_OPENAI_API_KEY=your_deepseek_api_key
 CHAT_OPENAI_MODEL=deepseek-chat
 ```
 
-`host.docker.internal` lets the Docker container reach Ollama or LM Studio
-running on the Windows host. If the chat provider is unavailable or returns
-invalid JSON, the workflow records the failure in the trace and falls back to
-the local evidence-grounded answer.
+说明：
 
-To use a remote OpenAI-compatible embedding provider, update `.env` without
-committing the key:
+- 文档上传时会生成 embedding 并写入 pgvector。
+- 提问时会生成 query embedding，用于向量检索。
+- DeepSeek 只负责报告 Agent 的归纳表达。
+- 如果 DeepSeek 不可用或返回格式不符合要求，系统会记录失败原因，并 fallback 到本地证据回答。
 
-```env
-MODEL_PROVIDER=openai-compatible
-OPENAI_API_KEY=your_api_key
-OPENAI_BASE_URL=https://api.openai.com/v1
-OPENAI_EMBEDDING_MODEL=text-embedding-3-small
-OPENAI_EMBEDDING_DIMENSIONS=512
+## 本地开源模型
+
+Docker 构建后可以显式下载模型：
+
+```powershell
+docker compose run --rm app python scripts/download_local_model.py
 ```
 
-`GET /api/model-config` shows active embedding and chat provider details but
-never returns API keys. In `MODEL_PROVIDER=openai-compatible` mode, document
-chunks and search queries use the provider's `/embeddings` endpoint. The current
-database schema uses `vector(512)`, so `OPENAI_EMBEDDING_DIMENSIONS` must remain
-`512`. In `CHAT_PROVIDER=openai-compatible` mode, the report agent calls the
-chat provider's `/chat/completions` endpoint with
-`response_format={"type":"json_object"}`. The returned JSON must include
-`answer` and `citations`.
+模型会缓存到：
 
-When switching an existing PostgreSQL database from the old 64-dimensional
-development vectors, run `alembic upgrade head`. The migration recreates the
-vector column and the application backfills embeddings from stored chunk text.
-
-## Run With Docker
-
-```bash
-copy .env.example .env
-docker compose up --build
+```text
+data/models
 ```
 
-Docker Compose starts the app, PostgreSQL with pgvector, and MinIO. Uploaded documents and workflow traces are persisted in PostgreSQL when `DATABASE_URL` is configured. The app image includes Poppler and Tesseract so scanned PDFs can fall back to OCR when no embedded text layer is found.
+该目录不应提交到 GitHub。
 
-The Compose stack also starts MinIO:
+## 常用命令
 
-- API endpoint inside Docker: `minio:9000`
-- Console: `http://127.0.0.1:9001`
-- Default account: `minioadmin / minioadmin`
-- Upload bucket: `audit-documents`
+运行测试：
 
-When `MINIO_ENDPOINT` is configured, uploaded source files are stored as
-`minio://audit-documents/uploads/<document-id>/<filename>`. Without MinIO
-settings, the app falls back to `data/runtime/uploads`.
-
-## Test And Evaluate
-
-```bash
+```powershell
 pytest
-python scripts/run_evaluation.py
 ```
 
-The evaluation script writes:
+Docker 内运行测试：
 
-- `data/evaluation_results.json`
-- `docs/evaluation-report.md`
+```powershell
+docker compose exec app pytest
+```
 
-## Reset Demo Data
+运行评测：
 
-Before a live demo, clear demo audit history, remove persisted uploaded
-documents owned by `local-demo`, and import the curated sample documents from
-`data/test_uploads`:
+```powershell
+docker compose exec app python scripts/run_evaluation.py
+```
 
-```bash
+重置演示数据，先 dry-run：
+
+```powershell
 docker compose exec app python scripts/reset_demo_data.py --all
 ```
 
-The command above is a dry run. To actually modify PostgreSQL and seed MinIO,
-add `--apply`:
+真正执行重置：
 
-```bash
+```powershell
 docker compose exec app python scripts/reset_demo_data.py --all --apply
 ```
 
-Useful narrower variants:
+检查数据库健康状态：
 
-```bash
-docker compose exec app python scripts/reset_demo_data.py --clear-audit --apply
-docker compose exec app python scripts/reset_demo_data.py --clear-all-documents --seed-documents --apply
-docker compose exec app python scripts/reset_demo_data.py --clear-documents --seed-documents --apply
+```powershell
+docker compose exec app python scripts/check_database.py
 ```
 
-The reset script keeps the built-in read-only seed documents, clears demo
-workflow history for `local-demo`, `demo-alice`, and `demo-bob`, and reseeds the
-curated upload documents for `local-demo`. Use `--clear-documents` instead of
-`--clear-all-documents` when you only want to replace the curated demo uploads
-and keep other manually uploaded files.
+## API 示例
 
-The README preview image can be regenerated with:
+登录：
 
-```bash
-python scripts/make_readme_screenshot.py
+```http
+POST /api/auth/login
 ```
 
-## API Examples
+提问：
 
-Ask a question:
+```http
+POST /api/ask
+Authorization: Bearer <token>
+Content-Type: application/json
 
-```bash
-TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d "{\"username\":\"alice\",\"password\":\"alice123456\"}" | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
-
-curl -X POST http://127.0.0.1:8000/api/ask ^
-  -H "Content-Type: application/json" ^
-  -H "Authorization: Bearer $TOKEN" ^
-  -d "{\"question\":\"Can the legacy sales tool directly download the full customer list?\"}"
+{
+  "question": "销售是否可以直接导出完整客户名单？请说明风险和正确流程。"
+}
 ```
 
-Upload a document:
+上传文档：
 
 ```http
 POST /api/documents/upload
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+title: 文档标题
+file: .txt / .pdf / .docx / .xlsx
 ```
 
-Multipart fields:
-
-- `title`: document title
-- `file`: `.txt`, text-based `.pdf`, `.docx`, or `.xlsx`
-
-PDF parsing first uses the embedded text layer. If no text is found, Docker builds use Poppler + Tesseract OCR (`chi_sim+eng`) to extract scanned pages.
-
-Ingest a web page:
+查看系统诊断：
 
 ```http
-POST /api/documents/ingest-url
+GET /api/admin/system-status
+Authorization: Bearer <token>
 ```
 
-JSON body:
+## 面试演示路径
 
-- `title`: document title
-- `url`: `http` or `https` HTML page
+推荐按这个顺序演示：
 
-The page is fetched, visible HTML text is parsed into paragraph-level sections, and the resulting chunks are indexed like uploaded files.
+1. 打开首页，说明项目解决的是企业知识库审计，不只是问答。
+2. 登录 Alice，查看已有知识库文档。
+3. 提问“销售是否可以直接导出完整客户名单？”
+4. 展示回答里的证据引用、风险发现和来源位置。
+5. 查看工作流 Trace，说明检索、审计、报告和人工确认节点。
+6. 上传一份和现有制度冲突的文档，再次提问，展示冲突识别。
+7. 切换 Bob，演示 viewer 不能上传、不能查看系统诊断。
+8. 导出 Markdown 或 PDF 报告。
+9. 打开“系统状态与索引诊断”，展示工程可运维能力。
+10. 展示评测结果和 GitHub 文档。
 
-## Architecture
+详细脚本：[docs/demo-script.md](docs/demo-script.md)
 
-See [docs/architecture.md](docs/architecture.md).
+## 文档入口
 
-```mermaid
-flowchart LR
-    U["Business user"] --> W["Web UI"]
-    W --> A["FastAPI API"]
-    A --> P["Parser + chunker"]
-    P --> D["PostgreSQL + pgvector"]
-    A --> R["Retrieval agent"]
-    R --> D
-    A --> C["Audit agent"]
-    C --> G["Report agent"]
-    G --> O["Answer, citations, report"]
-    A --> L["Workflow trace + audit history"]
-```
+- 架构说明：[docs/architecture.md](docs/architecture.md)
+- 数据库指南：[docs/database-guide.md](docs/database-guide.md)
+- 演示脚本：[docs/demo-script.md](docs/demo-script.md)
+- 项目亮点与局限：[docs/project-highlights.md](docs/project-highlights.md)
+- 测试数据说明：[docs/test-data.md](docs/test-data.md)
+- 交付检查清单：[docs/delivery-checklist.md](docs/delivery-checklist.md)
 
-## Demo Script
+## 学习笔记
 
-1. Start the app with Docker Compose.
-2. Open `http://127.0.0.1:8000`.
-3. Ask: `Can the legacy sales tool directly download the full customer list?`
-4. Show the grounded answer, citations, and risk findings.
-5. Switch between Alice and Bob to demonstrate knowledge-base isolation.
-6. Upload one PDF, DOCX, and XLSX sample from `data/sample_uploads`.
-7. Export the report as Markdown and PDF.
-8. Run `python scripts/run_evaluation.py` and open `docs/evaluation-report.md`.
+- [第 01 课：FastAPI 最小服务](docs/lesson-01-setup.md)
+- [第 02 课：上传接口](docs/lesson-02-upload.md)
+- [第 03 课：PDF、Word、Excel 解析](docs/lesson-03-parsers.md)
+- [第 04 课：切片与引用](docs/lesson-04-chunked-citations.md)
+- [第 05 课：数据库模型](docs/lesson-05-database-schema.md)
+- [第 06 课：向量检索](docs/lesson-06-vector-search.md)
+- [第 07 课：工作流报告](docs/lesson-07-workflow-report.md)
+- [第 08 课：报告导出](docs/lesson-08-report-export.md)
+- [第 09 课：权限模型](docs/lesson-09-permission-schema.md)
+- [第 10 课：鉴权隔离](docs/lesson-10-auth-isolation.md)
+- [第 11 课：用户切换器](docs/lesson-11-user-switcher.md)
+- [第 12 课：可观测性](docs/lesson-12-observability.md)
+- [第 13 课：Trace 持久化](docs/lesson-13-trace-persistence.md)
+- [第 14 课：审计历史](docs/lesson-14-audit-history.md)
+- [第 15 课：评测体系](docs/lesson-15-evaluation.md)
 
-## Learning Notes
+## 后续优化
 
-- [Lesson 01: FastAPI setup](docs/lesson-01-setup.md)
-- [Lesson 02: Upload API](docs/lesson-02-upload.md)
-- [Lesson 03: PDF, Word, and Excel parsing](docs/lesson-03-parsers.md)
-- [Lesson 04: Chunked citations](docs/lesson-04-chunked-citations.md)
-- [Lesson 05: Database schema](docs/lesson-05-database-schema.md)
-- [Lesson 06: Vector search](docs/lesson-06-vector-search.md)
-- [Lesson 07: Workflow report](docs/lesson-07-workflow-report.md)
-- [Lesson 08: Report export](docs/lesson-08-report-export.md)
-- [Lesson 09: Permission schema](docs/lesson-09-permission-schema.md)
-- [Lesson 10: Auth isolation](docs/lesson-10-auth-isolation.md)
-- [Lesson 11: User switcher](docs/lesson-11-user-switcher.md)
-- [Lesson 12: Observability](docs/lesson-12-observability.md)
-- [Lesson 13: Trace persistence](docs/lesson-13-trace-persistence.md)
-- [Lesson 14: Audit history](docs/lesson-14-audit-history.md)
-- [Lesson 15: Evaluation](docs/lesson-15-evaluation.md)
-
-## Roadmap
-
-- Replace local scoring with production embeddings plus pgvector reranking.
-- Add production-grade OCR preprocessing and page image quality diagnostics.
-- Add LLM synthesis with strict JSON schema validation.
-- Add LLM-as-judge and human-labeled citation-span evaluation.
-- Add a recorded demo video and real browser screenshots.
+- 接入更强的中文 reranker，并对 TopK 和融合权重做离线调参。
+- 为 OCR 增加页面质量诊断、版面分析和表格还原。
+- 引入更严格的 JSON Schema 约束和 LLM-as-judge 评测。
+- 增加多租户管理后台和更细粒度的文档 ACL。
+- 录制完整演示视频，补充真实浏览器截图。
