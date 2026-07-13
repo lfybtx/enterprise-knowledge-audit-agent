@@ -14,6 +14,12 @@
         <h1>企业知识库审计 Agent</h1>
       </div>
       <div class="header-tools">
+        <form id="login-form" class="login-form">
+          <input id="login-username" name="username" type="text" value="alice" autocomplete="username" aria-label="用户名" />
+          <input id="login-password" name="password" type="password" value="alice123456" autocomplete="current-password" aria-label="密码" />
+          <button id="login-button" type="submit" class="secondary">登录</button>
+          <button id="logout-button" type="button" class="secondary" hidden>退出</button>
+        </form>
         <label class="user-switcher" for="user-select">
           <span>当前用户</span>
           <select id="user-select">

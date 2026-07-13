@@ -37,6 +37,27 @@ header .eyebrow { color: #9fb4cf; margin-bottom: 6px; }
   display: flex;
   align-items: center;
   gap: 14px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.login-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.login-form input {
+  width: 118px;
+  border: 1px solid #5d7b9e;
+  border-radius: 4px;
+  background: #173252;
+  color: #fff;
+  padding: 8px 9px;
+  font: inherit;
+  font-size: 13px;
+}
+.login-form input::placeholder {
+  color: #b7c8dc;
 }
 .user-switcher {
   display: flex;

@@ -11,6 +11,7 @@ let lastWorkflowTrace = [];
 let selectedTraceId = "";
 let selectedKnowledgeBaseId = "";
 let knowledgeBases = [];
+let currentSession = JSON.parse(localStorage.getItem("audit-agent-session") || "null");
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => ({
@@ -28,7 +29,7 @@ function currentUserId() {
 }
 
 function currentUserLabel() {
-  return USERS.find((user) => user.id === currentUserId())?.label || currentUserId();
+  return currentSession?.user?.display_name || USERS.find((user) => user.id === currentUserId())?.label || currentUserId();
 }
 
 function currentKnowledgeBase() {
@@ -36,7 +37,9 @@ function currentKnowledgeBase() {
 }
 
 function authHeaders(extraHeaders = {}) {
-  const headers = { ...extraHeaders, "X-User-Id": currentUserId() };
+  const headers = { ...extraHeaders };
+  if (currentSession?.access_token) headers.Authorization = `Bearer ${currentSession.access_token}`;
+  else headers["X-User-Id"] = currentUserId();
   if (selectedKnowledgeBaseId) headers["X-Knowledge-Base-Id"] = selectedKnowledgeBaseId;
   return headers;
 }
@@ -45,6 +48,14 @@ function savePreferences() {
   localStorage.setItem("audit-agent-user-id", currentUserId());
   localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);
   $("#active-user").textContent = currentUserLabel();
+}
+
+function syncLoginState() {
+  const loggedIn = Boolean(currentSession?.access_token);
+  $("#logout-button").hidden = !loggedIn;
+  $("#login-button").textContent = loggedIn ? "已登录" : "登录";
+  $("#login-button").disabled = loggedIn;
+  $("#user-select").disabled = loggedIn;
 }
 
 function restorePreferences() {
@@ -86,6 +97,40 @@ async function fetchJson(url, options = {}) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.detail || "请求失败");
   return payload;
+}
+
+async function login(event) {
+  event.preventDefault();
+  const button = $("#login-button");
+  button.disabled = true;
+  button.textContent = "登录中";
+  try {
+    const payload = await fetchJson("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        username: $("#login-username").value.trim(),
+        password: $("#login-password").value,
+      }),
+    });
+    currentSession = payload;
+    localStorage.setItem("audit-agent-session", JSON.stringify(payload));
+    syncLoginState();
+    clearResult();
+    await refreshOverview();
+  } catch (error) {
+    alert(error.message);
+    button.disabled = false;
+    button.textContent = "登录";
+  }
+}
+
+async function logout() {
+  currentSession = null;
+  localStorage.removeItem("audit-agent-session");
+  syncLoginState();
+  clearResult();
+  await refreshOverview();
 }
 
 function percent(value) {
@@ -473,6 +518,8 @@ async function switchKnowledgeBase() {
 
 $("#ask").addEventListener("click", ask);
 $("#upload-form").addEventListener("submit", uploadDocument);
+$("#login-form").addEventListener("submit", login);
+$("#logout-button").addEventListener("click", logout);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {
@@ -522,4 +569,5 @@ function restoreChineseUi() {
 
 restoreChineseUi();
 restorePreferences();
+syncLoginState();
 refreshOverview();

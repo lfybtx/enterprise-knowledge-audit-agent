@@ -115,7 +115,42 @@ def test_current_user_endpoint_reflects_user_header():
     response = client.get("/api/me", headers={"X-User-Id": "demo-alice"})
 
     assert response.status_code == 200
-    assert response.json() == {"id": "demo-alice", "display_name": "Alice", "role": "editor"}
+    payload = response.json()
+    assert payload["id"] == "demo-alice"
+    assert payload["display_name"] == "Alice"
+    assert payload["role"] == "editor"
+    assert payload["auth_mode"] == "header"
+
+
+def test_login_returns_jwt_and_me_accepts_bearer_token():
+    login_response = client.post(
+        "/api/auth/login",
+        json={"username": "alice", "password": "alice123456"},
+    )
+
+    assert login_response.status_code == 200
+    token = login_response.json()["access_token"]
+
+    me_response = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+
+    assert me_response.status_code == 200
+    payload = me_response.json()
+    assert payload["id"] == "demo-alice"
+    assert payload["tenant_id"] == "tenant-demo"
+    assert payload["department"] == "sales"
+    assert payload["auth_mode"] == "jwt"
+
+
+def test_invalid_login_is_rejected():
+    response = client.post("/api/auth/login", json={"username": "alice", "password": "wrong-password"})
+
+    assert response.status_code == 401
+
+
+def test_invalid_bearer_token_is_rejected():
+    response = client.get("/api/me", headers={"Authorization": "Bearer not-a-token"})
+
+    assert response.status_code == 401
 
 
 def test_knowledge_bases_endpoint_returns_roles_for_current_user():
@@ -129,7 +164,8 @@ def test_knowledge_bases_endpoint_returns_roles_for_current_user():
     assert payload[2]["can_write"] is False
 
 
-def test_audit_log_is_filtered_by_user_header():
+def test_audit_log_is_filtered_by_user_header(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     original_audit_log = list(main.audit_log)
     main.audit_log[:] = [
         {"event": "question_answered", "user_id": "demo-alice"},
@@ -174,7 +210,8 @@ def test_viewer_cannot_create_or_upload_documents(tmp_path, monkeypatch):
     assert upload_response.status_code == 403
 
 
-def test_persist_audit_event_includes_workflow_trace():
+def test_persist_audit_event_includes_workflow_trace(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
     original_audit_log = list(main.audit_log)
     main.audit_log[:] = []
 

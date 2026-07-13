@@ -93,7 +93,7 @@ class WorkflowRun(Base):
     __table_args__ = (UniqueConstraint("trace_id"),)
 
     id: Mapped[UUID] = mapped_column(PostgreSQLUUID(as_uuid=True), primary_key=True, default=uuid4)
-    trace_id: Mapped[str] = mapped_column(String(36), nullable=False, index=True)
+    trace_id: Mapped[str] = mapped_column(String(80), nullable=False, index=True)
     user_id: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
     event_type: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     question: Mapped[str] = mapped_column(Text, nullable=False)

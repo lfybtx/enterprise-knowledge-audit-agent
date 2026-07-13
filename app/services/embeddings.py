@@ -49,6 +49,9 @@ def embed_texts(
     """Embed a batch with the selected provider while preserving local fallback."""
     if not texts:
         return []
+    empty_vector = [0.0] * dimensions
+    if all(not text.strip() for text in texts):
+        return [list(empty_vector) for _ in texts]
 
     try:
         settings = ModelProviderSettings.from_environment()
@@ -56,10 +59,26 @@ def embed_texts(
         raise EmbeddingProviderError(str(error)) from error
 
     if settings.provider == OPENAI_COMPATIBLE_PROVIDER:
-        return _embed_with_openai_compatible(settings, texts, dimensions)
+        return _restore_empty_vectors(texts, _embed_with_openai_compatible(settings, _non_empty_texts(texts), dimensions), dimensions)
     if settings.provider == LOCAL_HF_PROVIDER:
-        return _embed_with_local_hf(settings, texts, dimensions, is_query=is_query)
+        return _restore_empty_vectors(texts, _embed_with_local_hf(settings, _non_empty_texts(texts), dimensions, is_query=is_query), dimensions)
     return [_local_embed_text(text, dimensions) for text in texts]
+
+
+def _non_empty_texts(texts: list[str]) -> list[str]:
+    return [text for text in texts if text.strip()]
+
+
+def _restore_empty_vectors(texts: list[str], non_empty_vectors: list[list[float]], dimensions: int) -> list[list[float]]:
+    vectors: list[list[float]] = []
+    vector_index = 0
+    for text in texts:
+        if not text.strip():
+            vectors.append([0.0] * dimensions)
+            continue
+        vectors.append(non_empty_vectors[vector_index])
+        vector_index += 1
+    return vectors
 
 
 def _local_embed_text(text: str, dimensions: int = EMBEDDING_DIMENSIONS) -> list[float]:

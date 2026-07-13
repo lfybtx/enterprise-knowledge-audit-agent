@@ -388,13 +388,14 @@ def database_is_ready(session: Session) -> bool:
 
 
 def document_to_record(document: KnowledgeDocument) -> dict[str, Any]:
+    knowledge_base = getattr(document, "knowledge_base", None)
     return {
         "id": str(document.id),
         "title": document.title,
         "source": document.source,
         "file_type": document.file_type,
         "content": document.content,
-        "owner_id": document.knowledge_base.owner_id if document.knowledge_base else LOCAL_OWNER_ID,
+        "owner_id": knowledge_base.owner_id if knowledge_base else LOCAL_OWNER_ID,
         "chunks": [
             {
                 "id": str(chunk.id),
@@ -526,6 +527,7 @@ def review_workflow_run(
 def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
     ordered_steps = sorted(run.steps, key=lambda item: item.step_index)
     return {
+        "id": str(run.id),
         "event": run.event_type,
         "trace_id": run.trace_id,
         "user_id": run.user_id,
