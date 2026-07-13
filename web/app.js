@@ -158,6 +158,10 @@ function renderEvaluationResults(payload) {
     ["题目数", summary.total ?? 0],
     ["Recall@1", percent(summary.recall_at_1)],
     ["Recall@3", percent(summary.recall_at_3)],
+    ["风险识别", percent(summary.risk_type_accuracy)],
+    ["冲突检测", percent(summary.conflict_accuracy)],
+    ["证据绑定", percent(summary.evidence_binding_accuracy)],
+    ["审批触发", percent(summary.review_trigger_accuracy)],
     ["引用准确率", percent(summary.citation_accuracy)],
     ["回答质量", percent(summary.answer_quality_rate)],
   ].map(([label, value]) => `

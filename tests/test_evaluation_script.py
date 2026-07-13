@@ -19,14 +19,21 @@ def test_run_evaluation_writes_summary_file(tmp_path):
 
     assert output_path.exists()
     assert report_path.exists()
-    assert payload["summary"]["total"] == 50
+    assert payload["summary"]["total"] == 60
     assert 0 <= payload["summary"]["recall_at_1"] <= 1
     assert 0 <= payload["summary"]["citation_accuracy"] <= 1
+    assert 0 <= payload["summary"]["risk_type_accuracy"] <= 1
+    assert 0 <= payload["summary"]["conflict_accuracy"] <= 1
+    assert 0 <= payload["summary"]["evidence_binding_accuracy"] <= 1
+    assert 0 <= payload["summary"]["review_trigger_accuracy"] <= 1
     assert "fusion_baseline" in payload["comparison"]
     assert "reranked" in payload["comparison"]
+    assert "failure_breakdown" in payload
     assert payload["summary"]["average_latency_ms"] >= 0
     assert payload["outcomes"][0]["actual_document_ids"]
-    assert "Recall@1" in report_path.read_text(encoding="utf-8")
+    report_text = report_path.read_text(encoding="utf-8")
+    assert "Recall@1" in report_text
+    assert "Risk type accuracy" in report_text
 
 
 def test_evaluation_results_endpoint_returns_baseline_summary():
@@ -36,5 +43,6 @@ def test_evaluation_results_endpoint_returns_baseline_summary():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["summary"]["total"] == 50
+    assert payload["summary"]["total"] == 60
     assert "recall_at_1" in payload["summary"]
+    assert "risk_type_accuracy" in payload["summary"]

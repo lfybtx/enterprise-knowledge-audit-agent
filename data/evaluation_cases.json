@@ -298,5 +298,150 @@
     "question": "没有包含当前数据保护要求的是哪份历史说明？",
     "expected_document_id": "legacy-export-guide",
     "expected_location_kind": "document"
+  },
+  {
+    "id": "risk-export-001",
+    "question": "Can sales directly export the full customer list?",
+    "expected_document_id": "eval-current-export-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "data_export"
+    ],
+    "expected_conflict": true,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-current-export-policy",
+      "eval-legacy-export-guide"
+    ]
+  },
+  {
+    "id": "risk-permission-001",
+    "question": "Can an admin use a shared account to access customer data across departments?",
+    "expected_document_id": "eval-access-control-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "permission"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-access-control-policy"
+    ]
+  },
+  {
+    "id": "risk-contract-001",
+    "question": "Can sales promise compensation above the standard SLA before legal review?",
+    "expected_document_id": "eval-contract-sla-terms",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "contract_sla"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": false,
+    "expected_evidence_document_ids": [
+      "eval-contract-sla-terms"
+    ]
+  },
+  {
+    "id": "risk-sensitive-001",
+    "question": "Can support send customer phone numbers and access logs to an external customer without masking?",
+    "expected_document_id": "eval-sensitive-data-handling",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "sensitive_data"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-sensitive-data-handling"
+    ]
+  },
+  {
+    "id": "risk-approval-001",
+    "question": "If there is no approval record, can the system say customer data export is allowed?",
+    "expected_document_id": "eval-approval-matrix",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "approval_missing",
+      "data_export"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-approval-matrix"
+    ]
+  },
+  {
+    "id": "risk-retention-conflict-001",
+    "question": "Should exported customer files be kept for 30 days or deleted within 7 days?",
+    "expected_document_id": "eval-current-export-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "data_export"
+    ],
+    "expected_conflict": true,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-current-export-policy",
+      "eval-legacy-export-guide"
+    ]
+  },
+  {
+    "id": "risk-public-faq-001",
+    "question": "Can support disclose internal approval flows, customer lists, secrets, and access logs?",
+    "expected_document_id": "eval-public-faq",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "sensitive_data"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-public-faq"
+    ]
+  },
+  {
+    "id": "risk-incident-001",
+    "question": "What should happen after customer data leakage or abnormal access is found?",
+    "expected_document_id": "eval-incident-response-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "sensitive_data"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-incident-response-policy"
+    ]
+  },
+  {
+    "id": "risk-cross-share-001",
+    "question": "Can customer data be shared across departments without department owner approval?",
+    "expected_document_id": "eval-access-control-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "permission",
+      "approval_missing"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-access-control-policy"
+    ]
+  },
+  {
+    "id": "risk-legal-review-001",
+    "question": "Who must review external customer notification after a security incident?",
+    "expected_document_id": "eval-incident-response-policy",
+    "expected_location_kind": "document",
+    "expected_risk_types": [
+      "contract_sla",
+      "sensitive_data"
+    ],
+    "expected_conflict": false,
+    "expected_review_required": true,
+    "expected_evidence_document_ids": [
+      "eval-incident-response-policy"
+    ]
   }
 ]

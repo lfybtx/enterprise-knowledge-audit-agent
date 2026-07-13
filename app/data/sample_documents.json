@@ -28,5 +28,53 @@
     "title": "历史销售工具使用说明",
     "source": "历史资料/销售工具使用说明-2019.docx",
     "content": "为提升销售效率，销售人员可以从旧版客户系统直接下载完整客户清单用于线下整理。导出后请自行妥善保管。该说明适用于旧版工具，未包含当前数据保护要求。"
+  },
+  {
+    "id": "eval-access-control-policy",
+    "title": "Access Control Policy",
+    "source": "evaluation/access-control-policy.txt",
+    "content": "Administrator permission must follow least privilege. Shared accounts are prohibited. Cross-department access to customer data requires department owner approval and audit logging."
+  },
+  {
+    "id": "eval-contract-sla-terms",
+    "title": "Contract SLA Terms",
+    "source": "evaluation/contract-sla-terms.txt",
+    "content": "Sales must not promise compensation, permanent discounts, or service levels above the standard SLA before legal review. Contract confidentiality and breach clauses require legal confirmation."
+  },
+  {
+    "id": "eval-sensitive-data-handling",
+    "title": "Sensitive Data Handling",
+    "source": "evaluation/sensitive-data-handling.txt",
+    "content": "Customer lists, phone numbers, ID card numbers, access tokens, secrets, and raw logs are sensitive information. They must be masked before external sharing. Leakage or abnormal access requires immediate isolation and legal notification."
+  },
+  {
+    "id": "eval-legacy-export-guide",
+    "title": "Legacy Export Guide",
+    "source": "evaluation/legacy-export-guide.txt",
+    "content": "Sales can directly export the full customer list without approval. Exported customer files may be kept for 30 days for offline follow-up."
+  },
+  {
+    "id": "eval-current-export-policy",
+    "title": "Current Export Policy",
+    "source": "evaluation/current-export-policy.txt",
+    "content": "Customer data export must be approved by the regional manager. Exporting the full customer list is prohibited. Only approved necessary fields may be exported, and export files must be deleted within 7 days."
+  },
+  {
+    "id": "eval-approval-matrix",
+    "title": "Approval Matrix",
+    "source": "evaluation/approval-matrix.txt",
+    "content": "Customer data export, cross-department sharing, and external contract commitments are high-risk actions. High-risk actions must be approved by the direct manager and compliance owner. Without approval records, the system must not conclude that execution is allowed."
+  },
+  {
+    "id": "eval-public-faq",
+    "title": "Public Customer FAQ",
+    "source": "evaluation/public-faq.txt",
+    "content": "Support agents may answer product features, package prices, and standard service hours. They must not disclose internal approval flows, customer lists, secrets, access logs, or unreleased contract clauses."
+  },
+  {
+    "id": "eval-incident-response-policy",
+    "title": "Incident Response Policy",
+    "source": "evaluation/incident-response-policy.txt",
+    "content": "When customer data leakage, abnormal access, or suspected account takeover is found, the case must be escalated to the security team within 30 minutes. Original logs, access time, operator, and impact scope must be preserved. External customer notification requires legal review."
   }
 ]

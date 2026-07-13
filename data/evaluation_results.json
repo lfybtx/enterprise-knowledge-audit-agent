@@ -1,13 +1,17 @@
 {
   "summary": {
-    "total": 50,
-    "recall_at_1": 1.0,
+    "total": 60,
+    "recall_at_1": 0.9667,
     "recall_at_3": 1.0,
-    "citation_accuracy": 1.0,
+    "citation_accuracy": 0.9667,
     "answer_quality_rate": 1.0,
-    "average_latency_ms": 485.1,
-    "p95_latency_ms": 308.66,
-    "failure_rate": 0.0
+    "average_latency_ms": 1.22,
+    "p95_latency_ms": 1.58,
+    "failure_rate": 0.0,
+    "risk_type_accuracy": 0.9,
+    "conflict_accuracy": 1.0,
+    "evidence_binding_accuracy": 1.0,
+    "review_trigger_accuracy": 1.0
   },
   "outcomes": [
     {
@@ -25,7 +29,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 10110.81,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.58,
       "failed": false
     },
     {
@@ -34,8 +60,8 @@
       "expected_document_id": "security-access-v1",
       "actual_document_ids": [
         "security-access-v1",
-        "sales-export-v2",
-        "travel-policy-v3"
+        "incident-policy-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
@@ -43,7 +69,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 273.25,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.06,
       "failed": false
     },
     {
@@ -61,7 +109,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 271.67,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.27,
       "failed": false
     },
     {
@@ -79,7 +149,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 288.07,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.03,
       "failed": false
     },
     {
@@ -89,7 +180,7 @@
       "actual_document_ids": [
         "security-access-v1",
         "sales-export-v2",
-        "incident-policy-v1"
+        "legacy-export-guide"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
@@ -97,7 +188,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 262.32,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.19,
       "failed": false
     },
     {
@@ -115,7 +227,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 298.15,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.21,
       "failed": false
     },
     {
@@ -124,8 +258,8 @@
       "expected_document_id": "security-access-v1",
       "actual_document_ids": [
         "security-access-v1",
-        "sales-export-v2",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "sales-export-v2"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
@@ -133,7 +267,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 290.28,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.02,
       "failed": false
     },
     {
@@ -151,7 +306,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 267.72,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 0.99,
       "failed": false
     },
     {
@@ -161,7 +337,7 @@
       "actual_document_ids": [
         "security-access-v1",
         "incident-policy-v1",
-        "sales-export-v2"
+        "legacy-export-guide"
       ],
       "top_document_id": "security-access-v1",
       "top_location_kind": "document",
@@ -169,7 +345,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 278.63,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.14,
       "failed": false
     },
     {
@@ -187,7 +385,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 283.38,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.01,
       "failed": false
     },
     {
@@ -205,7 +425,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 294.08,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.3,
       "failed": false
     },
     {
@@ -214,8 +455,8 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "security-access-v1",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
@@ -223,7 +464,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 301.68,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.53,
       "failed": false
     },
     {
@@ -232,8 +494,8 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "security-access-v1",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
@@ -241,7 +503,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 279.11,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.43,
       "failed": false
     },
     {
@@ -259,7 +542,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 291.7,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.58,
       "failed": false
     },
     {
@@ -277,7 +581,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 277.83,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.85,
       "failed": false
     },
     {
@@ -287,7 +612,7 @@
       "actual_document_ids": [
         "sales-export-v2",
         "security-access-v1",
-        "travel-policy-v3"
+        "legacy-export-guide"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
@@ -295,7 +620,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 289.59,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.47,
       "failed": false
     },
     {
@@ -304,8 +650,8 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "security-access-v1",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
@@ -313,7 +659,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 300.61,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.27,
       "failed": false
     },
     {
@@ -322,8 +689,8 @@
       "expected_document_id": "sales-export-v2",
       "actual_document_ids": [
         "sales-export-v2",
-        "security-access-v1",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "sales-export-v2",
       "top_location_kind": "document",
@@ -331,7 +698,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 287.01,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.44,
       "failed": false
     },
     {
@@ -349,7 +737,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 283.03,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 2.32,
       "failed": false
     },
     {
@@ -367,7 +776,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 302.85,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.45,
       "failed": false
     },
     {
@@ -376,8 +806,8 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "sales-export-v2",
-        "security-access-v1"
+        "security-access-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
@@ -385,7 +815,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 281.69,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.12,
       "failed": false
     },
     {
@@ -403,12 +852,105 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 283.59,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.45,
       "failed": false
     },
     {
       "id": "travel-policy-003",
       "question": "超标准住宿报销前需要谁审批？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.05,
+      "failed": false
+    },
+    {
+      "id": "travel-policy-004",
+      "question": "机票改签产生额外费用时需要说明什么？",
+      "expected_document_id": "travel-policy-v3",
+      "actual_document_ids": [
+        "travel-policy-v3",
+        "legacy-export-guide",
+        "incident-policy-v1"
+      ],
+      "top_document_id": "travel-policy-v3",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.04,
+      "failed": false
+    },
+    {
+      "id": "travel-policy-005",
+      "question": "差旅住宿标准如何区分一线城市和其他城市？",
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
@@ -421,43 +963,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 272.98,
-      "failed": false
-    },
-    {
-      "id": "travel-policy-004",
-      "question": "机票改签产生额外费用时需要说明什么？",
-      "expected_document_id": "travel-policy-v3",
-      "actual_document_ids": [
-        "travel-policy-v3",
-        "sales-export-v2",
-        "legacy-export-guide"
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "permission",
+        "sensitive_data"
       ],
-      "top_document_id": "travel-policy-v3",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true,
-      "latency_ms": 278.13,
-      "failed": false
-    },
-    {
-      "id": "travel-policy-005",
-      "question": "差旅住宿标准如何区分一线城市和其他城市？",
-      "expected_document_id": "travel-policy-v3",
-      "actual_document_ids": [
-        "travel-policy-v3",
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
         "sales-export-v2",
         "security-access-v1"
       ],
-      "top_document_id": "travel-policy-v3",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true,
-      "latency_ms": 283.58,
+      "evidence_binding_correct": null,
+      "latency_ms": 1.08,
       "failed": false
     },
     {
@@ -475,7 +1000,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 311.21,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 0.99,
       "failed": false
     },
     {
@@ -484,8 +1028,8 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "sales-export-v2",
-        "legacy-export-guide"
+        "incident-policy-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
@@ -493,7 +1037,27 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 294.81,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.51,
       "failed": false
     },
     {
@@ -502,8 +1066,8 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "sales-export-v2",
-        "legacy-export-guide"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
@@ -511,7 +1075,27 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 294.07,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.23,
       "failed": false
     },
     {
@@ -520,8 +1104,8 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "sales-export-v2",
-        "security-access-v1"
+        "security-access-v1",
+        "sales-export-v2"
       ],
       "top_document_id": "travel-policy-v3",
       "top_location_kind": "document",
@@ -529,7 +1113,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 284.67,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.02,
       "failed": false
     },
     {
@@ -538,7 +1141,7 @@
       "expected_document_id": "travel-policy-v3",
       "actual_document_ids": [
         "travel-policy-v3",
-        "sales-export-v2",
+        "legacy-export-guide",
         "security-access-v1"
       ],
       "top_document_id": "travel-policy-v3",
@@ -547,7 +1150,27 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 291.51,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.01,
       "failed": false
     },
     {
@@ -557,7 +1180,7 @@
       "actual_document_ids": [
         "incident-policy-v1",
         "security-access-v1",
-        "sales-export-v2"
+        "legacy-export-guide"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
@@ -565,7 +1188,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 290.19,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.1,
       "failed": false
     },
     {
@@ -583,7 +1228,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 285.45,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.49,
       "failed": false
     },
     {
@@ -592,8 +1259,8 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "security-access-v1",
-        "sales-export-v2"
+        "sales-export-v2",
+        "legacy-export-guide"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
@@ -601,7 +1268,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 295.39,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.05,
       "failed": false
     },
     {
@@ -619,7 +1307,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 299.83,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 0.94,
       "failed": false
     },
     {
@@ -629,7 +1339,7 @@
       "actual_document_ids": [
         "incident-policy-v1",
         "security-access-v1",
-        "sales-export-v2"
+        "legacy-export-guide"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
@@ -637,7 +1347,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 295.64,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.01,
       "failed": false
     },
     {
@@ -655,7 +1387,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 282.18,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 0.97,
       "failed": false
     },
     {
@@ -673,7 +1427,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 276.98,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.21,
       "failed": false
     },
     {
@@ -682,8 +1458,8 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "security-access-v1",
-        "sales-export-v2"
+        "legacy-export-guide",
+        "security-access-v1"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
@@ -691,7 +1467,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 275.77,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.51,
       "failed": false
     },
     {
@@ -700,8 +1498,8 @@
       "expected_document_id": "incident-policy-v1",
       "actual_document_ids": [
         "incident-policy-v1",
-        "security-access-v1",
-        "sales-export-v2"
+        "sales-export-v2",
+        "security-access-v1"
       ],
       "top_document_id": "incident-policy-v1",
       "top_location_kind": "document",
@@ -709,7 +1507,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 279.68,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.02,
       "failed": false
     },
     {
@@ -727,7 +1547,29 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 308.66,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "incident-policy-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.09,
       "failed": false
     },
     {
@@ -737,7 +1579,7 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "sales-export-v2",
-        "security-access-v1"
+        "travel-policy-v3"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
@@ -745,7 +1587,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 296.89,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 0.97,
       "failed": false
     },
     {
@@ -763,7 +1624,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 282.46,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.24,
       "failed": false
     },
     {
@@ -781,7 +1663,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 292.0,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.25,
       "failed": false
     },
     {
@@ -791,7 +1694,7 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "security-access-v1",
-        "sales-export-v2"
+        "travel-policy-v3"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
@@ -799,7 +1702,27 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 287.12,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.05,
       "failed": false
     },
     {
@@ -808,7 +1731,46 @@
       "expected_document_id": "legacy-export-guide",
       "actual_document_ids": [
         "legacy-export-guide",
-        "security-access-v1",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "top_document_id": "legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.11,
+      "failed": false
+    },
+    {
+      "id": "legacy-export-006",
+      "question": "历史资料中的销售工具使用说明适用于哪个版本的工具？",
+      "expected_document_id": "legacy-export-guide",
+      "actual_document_ids": [
+        "legacy-export-guide",
+        "travel-policy-v3",
         "sales-export-v2"
       ],
       "top_document_id": "legacy-export-guide",
@@ -817,12 +1779,31 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 294.7,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.16,
       "failed": false
     },
     {
-      "id": "legacy-export-006",
-      "question": "历史资料中的销售工具使用说明适用于哪个版本的工具？",
+      "id": "legacy-export-007",
+      "question": "旧版工具直接下载客户清单的说明是否属于历史资料？",
       "expected_document_id": "legacy-export-guide",
       "actual_document_ids": [
         "legacy-export-guide",
@@ -835,25 +1816,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 286.88,
-      "failed": false
-    },
-    {
-      "id": "legacy-export-007",
-      "question": "旧版工具直接下载客户清单的说明是否属于历史资料？",
-      "expected_document_id": "legacy-export-guide",
-      "actual_document_ids": [
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
         "legacy-export-guide",
-        "security-access-v1",
         "sales-export-v2"
       ],
-      "top_document_id": "legacy-export-guide",
-      "top_location_kind": "document",
-      "recall_at_1": true,
-      "recall_at_3": true,
-      "citation_correct": true,
-      "answer_quality_passed": true,
-      "latency_ms": 298.54,
+      "evidence_binding_correct": null,
+      "latency_ms": 1.38,
       "failed": false
     },
     {
@@ -871,7 +1853,28 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 301.15,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.15,
       "failed": false
     },
     {
@@ -881,7 +1884,7 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "sales-export-v2",
-        "security-access-v1"
+        "travel-policy-v3"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
@@ -889,7 +1892,26 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 307.4,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "sales-export-v2"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.07,
       "failed": false
     },
     {
@@ -899,7 +1921,7 @@
       "actual_document_ids": [
         "legacy-export-guide",
         "security-access-v1",
-        "incident-policy-v1"
+        "travel-policy-v3"
       ],
       "top_document_id": "legacy-export-guide",
       "top_location_kind": "document",
@@ -907,30 +1929,518 @@
       "recall_at_3": true,
       "citation_correct": true,
       "answer_quality_passed": true,
-      "latency_ms": 309.97,
+      "expected_risk_types": [],
+      "detected_risk_types": [
+        "conflict",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": null,
+      "expected_conflict": null,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": null,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [],
+      "bound_evidence_document_ids": [
+        "legacy-export-guide",
+        "security-access-v1"
+      ],
+      "evidence_binding_correct": null,
+      "latency_ms": 1.0,
+      "failed": false
+    },
+    {
+      "id": "risk-export-001",
+      "question": "Can sales directly export the full customer list?",
+      "expected_document_id": "eval-current-export-policy",
+      "actual_document_ids": [
+        "eval-legacy-export-guide",
+        "eval-current-export-policy",
+        "eval-approval-matrix"
+      ],
+      "top_document_id": "eval-legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": false,
+      "recall_at_3": true,
+      "citation_correct": false,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "data_export"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": true,
+      "conflict_detected": true,
+      "conflict_correct": true,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-current-export-policy",
+        "eval-legacy-export-guide"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-approval-matrix",
+        "eval-current-export-policy",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 0.97,
+      "failed": false
+    },
+    {
+      "id": "risk-permission-001",
+      "question": "Can an admin use a shared account to access customer data across departments?",
+      "expected_document_id": "eval-access-control-policy",
+      "actual_document_ids": [
+        "eval-access-control-policy",
+        "eval-incident-response-policy",
+        "eval-legacy-export-guide"
+      ],
+      "top_document_id": "eval-access-control-policy",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "permission"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-access-control-policy"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-access-control-policy",
+        "eval-incident-response-policy",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.06,
+      "failed": false
+    },
+    {
+      "id": "risk-contract-001",
+      "question": "Can sales promise compensation above the standard SLA before legal review?",
+      "expected_document_id": "eval-contract-sla-terms",
+      "actual_document_ids": [
+        "eval-contract-sla-terms",
+        "eval-legacy-export-guide",
+        "eval-incident-response-policy"
+      ],
+      "top_document_id": "eval-contract-sla-terms",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "contract_sla"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": false,
+      "review_required_detected": true,
+      "review_trigger_correct": null,
+      "expected_evidence_document_ids": [
+        "eval-contract-sla-terms"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-contract-sla-terms",
+        "eval-incident-response-policy",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.13,
+      "failed": false
+    },
+    {
+      "id": "risk-sensitive-001",
+      "question": "Can support send customer phone numbers and access logs to an external customer without masking?",
+      "expected_document_id": "eval-sensitive-data-handling",
+      "actual_document_ids": [
+        "eval-sensitive-data-handling",
+        "eval-incident-response-policy",
+        "eval-public-faq"
+      ],
+      "top_document_id": "eval-sensitive-data-handling",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "sensitive_data"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-sensitive-data-handling"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-incident-response-policy",
+        "eval-public-faq",
+        "eval-sensitive-data-handling"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.06,
+      "failed": false
+    },
+    {
+      "id": "risk-approval-001",
+      "question": "If there is no approval record, can the system say customer data export is allowed?",
+      "expected_document_id": "eval-approval-matrix",
+      "actual_document_ids": [
+        "eval-approval-matrix",
+        "eval-current-export-policy",
+        "eval-legacy-export-guide"
+      ],
+      "top_document_id": "eval-approval-matrix",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "approval_missing",
+        "data_export"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-approval-matrix"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-approval-matrix",
+        "eval-current-export-policy",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.13,
+      "failed": false
+    },
+    {
+      "id": "risk-retention-conflict-001",
+      "question": "Should exported customer files be kept for 30 days or deleted within 7 days?",
+      "expected_document_id": "eval-current-export-policy",
+      "actual_document_ids": [
+        "eval-legacy-export-guide",
+        "eval-current-export-policy",
+        "eval-incident-response-policy"
+      ],
+      "top_document_id": "eval-legacy-export-guide",
+      "top_location_kind": "document",
+      "recall_at_1": false,
+      "recall_at_3": true,
+      "citation_correct": false,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "data_export"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": true,
+      "conflict_detected": true,
+      "conflict_correct": true,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-current-export-policy",
+        "eval-legacy-export-guide"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-current-export-policy",
+        "eval-incident-response-policy",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.24,
+      "failed": false
+    },
+    {
+      "id": "risk-public-faq-001",
+      "question": "Can support disclose internal approval flows, customer lists, secrets, and access logs?",
+      "expected_document_id": "eval-public-faq",
+      "actual_document_ids": [
+        "eval-public-faq",
+        "eval-sensitive-data-handling",
+        "eval-legacy-export-guide"
+      ],
+      "top_document_id": "eval-public-faq",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "sensitive_data"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-public-faq"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-legacy-export-guide",
+        "eval-public-faq",
+        "eval-sensitive-data-handling"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.3,
+      "failed": false
+    },
+    {
+      "id": "risk-incident-001",
+      "question": "What should happen after customer data leakage or abnormal access is found?",
+      "expected_document_id": "eval-incident-response-policy",
+      "actual_document_ids": [
+        "eval-incident-response-policy",
+        "eval-sensitive-data-handling",
+        "eval-current-export-policy"
+      ],
+      "top_document_id": "eval-incident-response-policy",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "sensitive_data"
+      ],
+      "detected_risk_types": [
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-incident-response-policy"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-current-export-policy",
+        "eval-incident-response-policy",
+        "eval-sensitive-data-handling"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.42,
+      "failed": false
+    },
+    {
+      "id": "risk-cross-share-001",
+      "question": "Can customer data be shared across departments without department owner approval?",
+      "expected_document_id": "eval-access-control-policy",
+      "actual_document_ids": [
+        "eval-access-control-policy",
+        "eval-approval-matrix",
+        "eval-legacy-export-guide"
+      ],
+      "top_document_id": "eval-access-control-policy",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "approval_missing",
+        "permission"
+      ],
+      "detected_risk_types": [
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": false,
+      "expected_conflict": false,
+      "conflict_detected": false,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-access-control-policy"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-access-control-policy",
+        "eval-approval-matrix",
+        "eval-legacy-export-guide"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.19,
+      "failed": false
+    },
+    {
+      "id": "risk-legal-review-001",
+      "question": "Who must review external customer notification after a security incident?",
+      "expected_document_id": "eval-incident-response-policy",
+      "actual_document_ids": [
+        "eval-incident-response-policy",
+        "eval-sensitive-data-handling",
+        "eval-approval-matrix"
+      ],
+      "top_document_id": "eval-incident-response-policy",
+      "top_location_kind": "document",
+      "recall_at_1": true,
+      "recall_at_3": true,
+      "citation_correct": true,
+      "answer_quality_passed": true,
+      "expected_risk_types": [
+        "contract_sla",
+        "sensitive_data"
+      ],
+      "detected_risk_types": [
+        "approval_missing",
+        "conflict",
+        "contract_sla",
+        "data_export",
+        "permission",
+        "sensitive_data"
+      ],
+      "risk_type_correct": true,
+      "expected_conflict": false,
+      "conflict_detected": true,
+      "conflict_correct": null,
+      "expected_review_required": true,
+      "review_required_detected": true,
+      "review_trigger_correct": true,
+      "expected_evidence_document_ids": [
+        "eval-incident-response-policy"
+      ],
+      "bound_evidence_document_ids": [
+        "eval-approval-matrix",
+        "eval-incident-response-policy",
+        "eval-sensitive-data-handling"
+      ],
+      "evidence_binding_correct": true,
+      "latency_ms": 1.04,
       "failed": false
     }
   ],
   "comparison": {
     "fusion_baseline": {
-      "total": 50,
-      "recall_at_1": 0.98,
+      "total": 60,
+      "recall_at_1": 0.9667,
       "recall_at_3": 1.0,
-      "citation_accuracy": 0.98,
+      "citation_accuracy": 0.9667,
       "answer_quality_rate": 1.0,
-      "average_latency_ms": 0.08,
-      "p95_latency_ms": 0.15,
-      "failure_rate": 0.0
+      "average_latency_ms": 0.19,
+      "p95_latency_ms": 0.26,
+      "failure_rate": 0.0,
+      "risk_type_accuracy": 0.9,
+      "conflict_accuracy": 1.0,
+      "evidence_binding_accuracy": 1.0,
+      "review_trigger_accuracy": 1.0
     },
     "reranked": {
-      "total": 50,
-      "recall_at_1": 1.0,
+      "total": 60,
+      "recall_at_1": 0.9667,
       "recall_at_3": 1.0,
-      "citation_accuracy": 1.0,
+      "citation_accuracy": 0.9667,
       "answer_quality_rate": 1.0,
-      "average_latency_ms": 485.1,
-      "p95_latency_ms": 308.66,
-      "failure_rate": 0.0
+      "average_latency_ms": 1.22,
+      "p95_latency_ms": 1.58,
+      "failure_rate": 0.0,
+      "risk_type_accuracy": 0.9,
+      "conflict_accuracy": 1.0,
+      "evidence_binding_accuracy": 1.0,
+      "review_trigger_accuracy": 1.0
     }
+  },
+  "failure_breakdown": {
+    "retrieval": 2,
+    "citation": 2,
+    "risk_type": 1,
+    "conflict": 0,
+    "evidence_binding": 0,
+    "review_trigger": 0
   }
 }

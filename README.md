@@ -21,11 +21,15 @@ An auditable knowledge-base Agent for enterprise policies, contracts, sales play
 
 | Metric | Result |
 | --- | --- |
-| Cases | 50 |
-| Recall@1 | 98.0% |
+| Cases | 60 |
+| Recall@1 | 96.7% |
 | Recall@3 | 100.0% |
-| Citation accuracy | 98.0% |
+| Citation accuracy | 96.7% |
 | Answer quality pass rate | 100.0% |
+| Risk type accuracy | 90.0% |
+| Conflict accuracy | 100.0% |
+| Evidence binding accuracy | 100.0% |
+| Review trigger accuracy | 100.0% |
 
 Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 
@@ -43,7 +47,7 @@ Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 | Audit history | Workflow traces persisted in PostgreSQL when Docker stack is used |
 | Permissions | JWT login with `X-User-Id` demo fallback |
 | Object storage | MinIO bucket for uploaded source files, with local disk fallback |
-| Evaluation | 50 cases, JSON results, Markdown report, and UI baseline panel |
+| Evaluation | 60 cases, risk metrics, JSON results, Markdown report, and UI baseline panel |
 
 ## Run Locally
 
