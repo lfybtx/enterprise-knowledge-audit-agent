@@ -36,11 +36,12 @@
         <div class="question-panel">
           <label for="question">向企业知识库提问</label>
           <textarea id="question">销售是否可以直接导出完整客户名单？请说明风险和正确流程。</textarea>
+          <div id="demo-questions" class="demo-questions" aria-label="演示问题"></div>
           <div class="actions">
             <button id="ask">运行审计</button>
             <button id="example" class="secondary">加载冲突案例</button>
           </div>
-          <p class="hint">回答只基于已检索到的证据，所有结论都会保留引用。</p>
+          <p class="hint">系统只基于检索到的证据回答；如果证据不足，会给出保守结论，并保留引用和流程 Trace。</p>
         </div>
         <aside class="metrics">
           <div><span>已索引文档</span><strong id="document-count">-</strong></div>
@@ -54,14 +55,14 @@
         <div>
           <p class="panel-label">文档接入</p>
           <h2>上传制度文档</h2>
-          <p class="hint">支持 TXT、文本型 PDF、Word、Excel 和网页 URL；viewer 角色不能写入。</p>
+          <p class="hint">支持 TXT、文本型 PDF、扫描 PDF、Word、Excel 和网页 URL。viewer 角色只能查看，不能写入。</p>
         </div>
         <div class="intake-forms">
           <form id="upload-form" class="upload-form">
             <label for="knowledge-base-select">知识库</label>
             <select id="knowledge-base-select" name="knowledge_base_id"></select>
             <label for="upload-title">文档标题</label>
-            <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="客户导出制度" required />
+            <input id="upload-title" name="title" type="text" minlength="2" maxlength="120" placeholder="客户数据导出制度" required />
             <label for="upload-file">文档文件</label>
             <input id="upload-file" name="file" type="file" accept=".txt,.pdf,.docx,.xlsx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required />
             <div class="actions">
@@ -90,7 +91,7 @@
         <div id="evaluation-summary" class="evaluation-grid"></div>
       </section>
 
-      <section id="empty" class="empty-state">运行一次审计后，这里会显示回答、证据引用和流程步骤。</section>
+      <section id="empty" class="empty-state">运行一次审计后，这里会显示带证据回答、风险发现、引用证据和工作流 Trace。</section>
       <section id="results" hidden>
         <div class="results-toolbar">
           <span class="panel-label">导出报告</span>
@@ -136,6 +137,6 @@
         <div id="documents" class="document-list"></div>
       </section>
     </main>
-    <script src="/static/app.js?v=20260713-url-ingest"></script>
+    <script src="/static/app.js?v=20260713-cn-ui"></script>
   </body>
 </html>

@@ -6,6 +6,21 @@ const USERS = [
   { id: "demo-bob", label: "Bob" },
 ];
 
+const DEMO_QUESTIONS = [
+  "销售是否可以直接导出完整客户名单？请说明风险和正确流程。",
+  "客服能否对外发送客户手机号、密钥和访问日志？",
+  "销售能否承诺高于标准 SLA 的赔偿？",
+  "跨部门访问客户数据是否需要审批？",
+  "发生客户数据泄露或异常访问后应该怎么处理？",
+];
+
+const STEP_LABELS = {
+  retrieval_agent: "检索 Agent",
+  audit_agent: "审计 Agent",
+  report_agent: "报告 Agent",
+  human_review: "人工确认",
+};
+
 let lastQuestion = "";
 let lastWorkflowTrace = [];
 let selectedTraceId = "";
@@ -14,7 +29,7 @@ let knowledgeBases = [];
 let currentSession = JSON.parse(localStorage.getItem("audit-agent-session") || "null");
 
 function escapeHtml(value) {
-  return String(value).replace(/[&<>"']/g, (character) => ({
+  return String(value ?? "").replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -83,8 +98,8 @@ function applyPermissions() {
   const kb = currentKnowledgeBase();
   const canWrite = Boolean(kb?.can_write);
   $("#active-role").textContent = kb?.role || "-";
-  $("#upload-status").textContent = canWrite ? "" : "当前角色无上传权限。";
-  $("#url-ingest-status").textContent = canWrite ? "" : "当前角色无网页入库权限。";
+  $("#upload-status").textContent = canWrite ? "" : "当前角色没有上传权限";
+  $("#url-ingest-status").textContent = canWrite ? "" : "当前角色没有网页入库权限";
   setWriteEnabled(canWrite);
 }
 
@@ -104,6 +119,18 @@ function clearResult() {
 
 function percent(value) {
   return `${((Number(value) || 0) * 100).toFixed(1)}%`;
+}
+
+function renderDemoQuestions() {
+  $("#demo-questions").innerHTML = DEMO_QUESTIONS.map((question) => `
+    <button type="button" class="demo-question" data-question="${escapeHtml(question)}">${escapeHtml(question)}</button>
+  `).join("");
+  $("#demo-questions").querySelectorAll("button[data-question]").forEach((button) => {
+    button.addEventListener("click", () => {
+      $("#question").value = button.getAttribute("data-question");
+      $("#question").focus();
+    });
+  });
 }
 
 async function login(event) {
@@ -154,20 +181,37 @@ function renderKnowledgeBaseOptions(items) {
 
 function renderEvaluationResults(payload) {
   const summary = payload.summary || {};
-  $("#evaluation-summary").innerHTML = [
-    ["题目数", summary.total ?? 0],
-    ["Recall@1", percent(summary.recall_at_1)],
-    ["Recall@3", percent(summary.recall_at_3)],
-    ["风险识别", percent(summary.risk_type_accuracy)],
-    ["冲突检测", percent(summary.conflict_accuracy)],
-    ["证据绑定", percent(summary.evidence_binding_accuracy)],
-    ["审批触发", percent(summary.review_trigger_accuracy)],
-    ["引用准确率", percent(summary.citation_accuracy)],
-    ["回答质量", percent(summary.answer_quality_rate)],
-  ].map(([label, value]) => `
-    <div class="evaluation-card">
-      <span>${escapeHtml(label)}</span>
-      <strong>${escapeHtml(value)}</strong>
+  const groups = [
+    ["检索质量", [
+      ["题目数", summary.total ?? 0],
+      ["Recall@1", percent(summary.recall_at_1)],
+      ["Recall@3", percent(summary.recall_at_3)],
+      ["引用准确率", percent(summary.citation_accuracy)],
+    ]],
+    ["审计质量", [
+      ["风险识别", percent(summary.risk_type_accuracy)],
+      ["冲突检测", percent(summary.conflict_accuracy)],
+      ["证据绑定", percent(summary.evidence_binding_accuracy)],
+      ["审批触发", percent(summary.review_trigger_accuracy)],
+    ]],
+    ["性能稳定性", [
+      ["回答质量", percent(summary.answer_quality_rate)],
+      ["平均延迟", `${Number(summary.average_latency_ms || 0).toFixed(2)} ms`],
+      ["P95 延迟", `${Number(summary.p95_latency_ms || 0).toFixed(2)} ms`],
+      ["失败率", percent(summary.failure_rate)],
+    ]],
+  ];
+  $("#evaluation-summary").innerHTML = groups.map(([group, items]) => `
+    <div class="evaluation-group">
+      <h3>${escapeHtml(group)}</h3>
+      <div class="evaluation-group-grid">
+        ${items.map(([label, value]) => `
+          <div class="evaluation-card">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+          </div>
+        `).join("")}
+      </div>
     </div>
   `).join("");
 }
@@ -190,6 +234,22 @@ function renderRetrievalCandidates(retrieval) {
   `;
 }
 
+function renderLlmTrace(traceData) {
+  const llm = traceData?.llm;
+  if (!llm) return "";
+  const status = llm.status || "success";
+  return `
+    <div class="llm-trace">
+      <strong>LLM 调用</strong>
+      <span>Provider：${escapeHtml(llm.provider || "-")}</span>
+      <span>Model：${escapeHtml(llm.chat_model || "-")}</span>
+      <span>状态：${status === "fallback" ? "已回退" : "成功"}</span>
+      ${llm.failure_reason ? `<span>回退原因：${escapeHtml(llm.failure_reason)}</span>` : ""}
+      ${llm.citation_count !== undefined ? `<span>引用数量：${escapeHtml(llm.citation_count)}</span>` : ""}
+    </div>
+  `;
+}
+
 function renderTrace(trace, title = "工作流 Trace") {
   if (!trace || !trace.length) {
     $("#trace").innerHTML = `
@@ -200,27 +260,31 @@ function renderTrace(trace, title = "工作流 Trace") {
   }
   $("#trace").innerHTML = `
     <div class="trace-head"><h3>${escapeHtml(title)}</h3></div>
-    ${trace.map((step, index) => `
-      <div class="trace-item">
-        <h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.status)} - ${escapeHtml(step.duration_ms)} ms</small></h3>
-        <p>${escapeHtml(step.detail)}</p>
-        <div class="trace-meta">
-          <span>Prompt: ${escapeHtml(step.prompt)}</span>
-          <span>Tools: ${escapeHtml((step.tool_calls || []).join(", "))}</span>
-          <span>Tokens: in ${escapeHtml(step.input_tokens)}, out ${escapeHtml(step.output_tokens)}</span>
-          <span>${step.failure_reason ? `Failure: ${escapeHtml(step.failure_reason)}` : "Failure: none"}</span>
+    ${trace.map((step, index) => {
+      const stepName = STEP_LABELS[step.name] || step.name;
+      return `
+        <div class="trace-item">
+          <h3>${index + 1}. ${escapeHtml(stepName)} <small>${escapeHtml(step.status)} - ${escapeHtml(step.duration_ms)} ms</small></h3>
+          <p>${escapeHtml(step.detail)}</p>
+          <div class="trace-meta">
+            <span>Prompt：${escapeHtml(step.prompt)}</span>
+            <span>工具调用：${escapeHtml((step.tool_calls || []).join(", ") || "-")}</span>
+            <span>Token 估算：输入 ${escapeHtml(step.input_tokens)}, 输出 ${escapeHtml(step.output_tokens)}</span>
+            <span>${step.failure_reason ? `失败原因：${escapeHtml(step.failure_reason)}` : "失败原因：无"}</span>
+          </div>
+          ${renderLlmTrace(step.trace_data)}
+          ${renderRetrievalCandidates(step.trace_data?.retrieval)}
         </div>
-        ${renderRetrievalCandidates(step.trace_data?.retrieval)}
-      </div>
-    `).join("")}
+      `;
+    }).join("")}
   `;
 }
 
 function renderEmptyAuditHistory() {
   const trace = [
-    { name: "检索 Agent", status: "待运行", duration_ms: 0, detail: "执行关键词与向量混合检索。", prompt: "等待问题输入", tool_calls: ["keyword_search", "vector_search"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
-    { name: "审计 Agent", status: "待运行", duration_ms: 0, detail: "检查风险、冲突和缺失信息。", prompt: "等待检索结果", tool_calls: ["conflict_check", "risk_assessment"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
-    { name: "报告 Agent", status: "待运行", duration_ms: 0, detail: "生成结论、依据、建议动作和引用。", prompt: "等待审计结果", tool_calls: ["report_builder"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "retrieval_agent", status: "待运行", duration_ms: 0, detail: "执行关键词、向量、融合与重排检索。", prompt: "等待问题输入", tool_calls: ["keyword_search", "pgvector_search", "fusion", "local_reranker"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "audit_agent", status: "待运行", duration_ms: 0, detail: "识别风险、冲突和证据不足。", prompt: "等待检索结果", tool_calls: ["assess"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
+    { name: "report_agent", status: "待运行", duration_ms: 0, detail: "生成带证据回答、风险清单和建议动作。", prompt: "等待审计结果", tool_calls: ["build_risk_report", "openai_compatible_chat"], input_tokens: 0, output_tokens: 0, failure_reason: "暂无审计记录" },
   ];
   $("#audit-history").innerHTML = `<div class="document muted">当前没有审计记录，可以先查看工作流预览。</div><div class="actions" style="margin-top: 10px;"><button type="button" class="secondary" id="replay-current-trace">查看 Trace 流程</button></div>`;
   $("#replay-current-trace").addEventListener("click", () => {
@@ -268,7 +332,7 @@ function renderAuditHistory(audit) {
             <button type="button" class="secondary" data-review-trace-id="${escapeHtml(traceId)}" data-review-decision="rejected">驳回</button>
           ` : ""}
           <button type="button" class="secondary" data-trace-id="${escapeHtml(traceId)}" ${hasTrace ? "" : "disabled"}>
-            ${hasTrace ? "查看 trace" : "暂无 trace"}
+            ${hasTrace ? "查看 Trace" : "暂无 Trace"}
           </button>
         </div>
       </div>
@@ -354,33 +418,37 @@ async function refreshOverview() {
 function renderResult(payload) {
   $("#empty").hidden = true;
   $("#results").hidden = false;
-  $("#answer").textContent = payload.answer;
+  $("#answer").textContent = payload.answer || "未检索到可用证据，系统不会直接回答。";
   renderApprovalPanel(payload);
-  $("#findings").innerHTML = payload.findings.map((finding) => `
-    <div class="finding ${finding.level.toLowerCase().includes("high") ? "high" : ""}">
-      <h3>${escapeHtml(finding.level)} - ${escapeHtml(finding.title)}</h3>
-      <p>${escapeHtml(finding.rationale)}</p>
-      ${renderFindingEvidence(finding)}
-      <p><strong>建议动作：</strong> ${escapeHtml(finding.recommendation)}</p>
-    </div>
-  `).join("");
-  $("#citations").innerHTML = payload.citations.map((citation, index) => `
-    <div class="citation">
-      <h3>证据 ${index + 1} - ${escapeHtml(citation.title)} <small>(${escapeHtml(citation.score)})</small></h3>
-      <p>${escapeHtml(citation.excerpt)}</p>
-      <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
-      <div class="retrieval-scores">
-        <span>最终排名 ${escapeHtml(citation.selected_rank ?? index + 1)}</span>
-        <span>关键词 ${escapeHtml(citation.lexical_score ?? "-")}</span>
-        <span>向量 ${escapeHtml(citation.semantic_score ?? "-")}</span>
-        <span>融合 ${escapeHtml(citation.fusion_score ?? "-")}</span>
-        <span>重排 ${escapeHtml(citation.rerank_score ?? "未执行")}</span>
-      </div>
-    </div>
-  `).join("");
+  $("#findings").innerHTML = payload.findings?.length
+    ? payload.findings.map((finding) => `
+        <div class="finding ${String(finding.level).toLowerCase().includes("high") ? "high" : ""}">
+          <h3>${escapeHtml(finding.level)} - ${escapeHtml(finding.title)}</h3>
+          <p>${escapeHtml(finding.rationale)}</p>
+          <p><strong>建议动作：</strong> ${escapeHtml(finding.recommendation)}</p>
+          ${renderFindingEvidence(finding)}
+        </div>
+      `).join("")
+    : '<div class="document muted">暂无风险发现。</div>';
+  $("#citations").innerHTML = payload.citations?.length
+    ? payload.citations.map((citation, index) => `
+        <div class="citation">
+          <h3>Evidence ${index + 1} - ${escapeHtml(citation.title)} <small>${escapeHtml(citation.score)}</small></h3>
+          <p>${escapeHtml(citation.excerpt)}</p>
+          <div class="source">${escapeHtml(citation.source)} - ${escapeHtml(citation.location_label)}</div>
+          <div class="retrieval-scores">
+            <span>最终排名 ${escapeHtml(citation.selected_rank ?? index + 1)}</span>
+            <span>关键词 ${escapeHtml(citation.lexical_score ?? "-")}</span>
+            <span>向量 ${escapeHtml(citation.semantic_score ?? "-")}</span>
+            <span>融合 ${escapeHtml(citation.fusion_score ?? "-")}</span>
+            <span>重排 ${escapeHtml(citation.rerank_score ?? "未执行")}</span>
+          </div>
+        </div>
+      `).join("")
+    : '<div class="document muted">未检索到可用证据，系统不会直接回答。</div>';
   selectedTraceId = "";
   lastWorkflowTrace = payload.workflow_trace || [];
-  renderTrace(lastWorkflowTrace, `当前流程 trace - ${payload.trace_id}`);
+  renderTrace(lastWorkflowTrace, `当前流程 Trace - ${payload.trace_id}`);
 }
 
 function renderFindingEvidence(finding) {
@@ -413,7 +481,13 @@ function renderApprovalPanel(payload) {
     return;
   }
   panel.hidden = false;
-  panel.innerHTML = `<div><strong>待人工确认</strong><span>该审计报告需要负责人确认。</span></div><div class="approval-actions"><button type="button" class="secondary" id="approve-current-audit">批准报告</button><button type="button" class="secondary" id="reject-current-audit">驳回报告</button></div>`;
+  panel.innerHTML = `
+    <div><strong>待人工确认</strong><span>该审计报告包含高风险或冲突结论，需要负责人确认。</span></div>
+    <div class="approval-actions">
+      <button type="button" class="secondary" id="approve-current-audit">批准报告</button>
+      <button type="button" class="secondary" id="reject-current-audit">驳回报告</button>
+    </div>
+  `;
   $("#approve-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "approved"));
   $("#reject-current-audit").addEventListener("click", () => reviewCurrentAudit(payload.trace_id, "rejected"));
 }
@@ -486,7 +560,7 @@ async function exportReport(exportFormat) {
 async function uploadDocument(event) {
   event.preventDefault();
   if (!currentKnowledgeBase()?.can_write) {
-    $("#upload-status").textContent = "当前角色无上传权限。";
+    $("#upload-status").textContent = "当前角色没有上传权限";
     return;
   }
   const form = $("#upload-form");
@@ -501,7 +575,7 @@ async function uploadDocument(event) {
     await fetchJson("/api/documents/upload", { method: "POST", body: new FormData(form) });
     form.reset();
     $("#knowledge-base-select").value = selectedKnowledgeBaseId;
-    status.textContent = `已为 ${currentUserLabel()} 上传`;
+    status.textContent = `已为 ${currentUserLabel()} 上传并索引`;
     await refreshOverview();
   } catch (error) {
     status.textContent = error.message;
@@ -513,7 +587,7 @@ async function uploadDocument(event) {
 async function ingestUrlDocument(event) {
   event.preventDefault();
   if (!currentKnowledgeBase()?.can_write) {
-    $("#url-ingest-status").textContent = "当前角色无网页入库权限。";
+    $("#url-ingest-status").textContent = "当前角色没有网页入库权限";
     return;
   }
   const form = $("#url-ingest-form");
@@ -562,12 +636,13 @@ $("#logout-button").addEventListener("click", logout);
 $("#export-md").addEventListener("click", () => exportReport("markdown").catch((error) => alert(error.message)));
 $("#export-pdf").addEventListener("click", () => exportReport("pdf").catch((error) => alert(error.message)));
 $("#example").addEventListener("click", () => {
-  $("#question").value = "旧版销售工具是否可以直接下载完整客户名单？请说明与当前制度的冲突，并给出整改建议。";
+  $("#question").value = "旧版销售工具是否可以直接下载完整客户名单？请说明它和当前制度的冲突，并给出整改建议。";
   ask();
 });
 $("#user-select").addEventListener("change", switchUser);
 $("#knowledge-base-select").addEventListener("change", switchKnowledgeBase);
 
+renderDemoQuestions();
 restorePreferences();
 syncLoginState();
 refreshOverview();
