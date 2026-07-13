@@ -58,6 +58,7 @@ def synthesize_answer(
             {"role": "user", "content": prompt},
         ],
         "temperature": 0,
+        "max_tokens": 1200,
         "response_format": {"type": "json_object"},
     }
     try:

@@ -47,6 +47,7 @@ def test_openai_compatible_synthesis_parses_strict_json(monkeypatch):
         assert url == "http://llm.local/v1/chat/completions"
         assert headers["Authorization"] == "Bearer test-key"
         assert json["response_format"] == {"type": "json_object"}
+        assert json["max_tokens"] == 1200
         return httpx.Response(
             200,
             json={

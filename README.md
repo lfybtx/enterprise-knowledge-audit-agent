@@ -114,6 +114,17 @@ CHAT_OPENAI_API_KEY=lm-studio
 CHAT_OPENAI_MODEL=<loaded-model-id>
 ```
 
+To use DeepSeek for remote chat synthesis, keep local embeddings enabled and
+set only the chat provider:
+
+```env
+MODEL_PROVIDER=local-hf
+CHAT_PROVIDER=openai-compatible
+CHAT_OPENAI_BASE_URL=https://api.deepseek.com
+CHAT_OPENAI_API_KEY=your_deepseek_api_key
+CHAT_OPENAI_MODEL=deepseek-chat
+```
+
 `host.docker.internal` lets the Docker container reach Ollama or LM Studio
 running on the Windows host. If the chat provider is unavailable or returns
 invalid JSON, the workflow records the failure in the trace and falls back to
