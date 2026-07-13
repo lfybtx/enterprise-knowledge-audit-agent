@@ -1,11 +1,5 @@
 const $ = (selector) => document.querySelector(selector);
 
-const DEMO_USERS = [
-  { id: "local-demo", label: "Local Demo" },
-  { id: "demo-alice", label: "Alice" },
-  { id: "demo-bob", label: "Bob" },
-];
-
 const DEMO_QUESTIONS = [
   "销售是否可以直接导出完整客户名单？请说明风险和正确流程。",
   "客服能否对外发送客户手机号、密钥和访问日志？",
@@ -30,7 +24,7 @@ function escapeHtml(value) {
 }
 
 function currentUserId() {
-  return session?.user?.id || $("#user-select").value || "local-demo";
+  return session?.user?.id || "";
 }
 
 function isAdmin() {
@@ -44,7 +38,6 @@ function currentKnowledgeBase() {
 function authHeaders(extra = {}) {
   const headers = { ...extra };
   if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
-  else headers["X-User-Id"] = currentUserId();
   if (selectedKnowledgeBaseId) headers["X-Knowledge-Base-Id"] = selectedKnowledgeBaseId;
   return headers;
 }
@@ -52,6 +45,12 @@ function authHeaders(extra = {}) {
 async function fetchJson(url, options = {}) {
   const response = await fetch(url, { ...options, headers: authHeaders(options.headers || {}) });
   const payload = await response.json().catch(() => ({}));
+  if (response.status === 401 && session?.access_token) {
+    session = null;
+    localStorage.removeItem("audit-agent-session");
+    syncAuthUi();
+    applyPermissions();
+  }
   if (!response.ok) throw new Error(payload.detail || "请求失败");
   return payload;
 }
@@ -68,8 +67,10 @@ function syncAuthUi() {
   $("#logout-button").hidden = !loggedIn;
   $("#login-button").disabled = loggedIn;
   $("#login-button").textContent = loggedIn ? "已登录" : "登录";
-  $("#user-select").disabled = loggedIn;
-  $("#admin-tab").hidden = !isAdmin();
+  $("#admin-tab").hidden = !loggedIn;
+  document.querySelectorAll("[data-admin-only]").forEach((node) => {
+    node.hidden = !isAdmin();
+  });
 }
 
 function setPage(page) {
@@ -139,15 +140,23 @@ async function register(event) {
 
 async function logout() {
   session = null;
+  knowledgeBases = [];
+  users = [];
+  selectedKnowledgeBaseId = "";
   localStorage.removeItem("audit-agent-session");
   syncAuthUi();
-  await refreshOverview();
+  renderKnowledgeBases([]);
+  renderUsers();
+  renderDocuments([], { display_name: "未登录" });
+  renderAuditHistory([]);
+  applyPermissions();
 }
 
 function applyPermissions() {
   const kb = currentKnowledgeBase();
   const canWrite = Boolean(kb?.can_write);
   const canManage = Boolean(kb?.can_manage);
+  const loggedIn = Boolean(session?.access_token);
   $("#active-role").textContent = session?.user?.role === "admin" ? "admin" : (kb?.role || "-");
   ["#upload-title", "#upload-file", "#upload-button", "#url-title", "#url-input", "#url-ingest-button"].forEach((selector) => {
     const node = $(selector);
@@ -157,6 +166,14 @@ function applyPermissions() {
     const node = $(selector);
     if (node) node.disabled = !canManage;
   });
+  ["#ask", "#example"].forEach((selector) => {
+    const node = $(selector);
+    if (node) node.disabled = !loggedIn;
+  });
+  $("#knowledge-base-save").disabled = !loggedIn;
+  const ownerOption = $("#member-role").querySelector('option[value="owner"]');
+  ownerOption.disabled = !isAdmin();
+  if (ownerOption.disabled && $("#member-role").value === "owner") $("#member-role").value = "viewer";
   $("#member-status").textContent = canManage ? "" : "只有知识库 owner 或 admin 可以管理成员";
 }
 
@@ -285,8 +302,9 @@ async function refreshSystemStatus() {
 }
 
 async function refreshAdminPage() {
-  if (!isAdmin()) return;
-  await Promise.all([refreshUsers(), refreshMembers(), refreshSystemStatus()]);
+  if (!session?.access_token) return;
+  await Promise.all([refreshUsers(), refreshMembers()]);
+  if (isAdmin()) await refreshSystemStatus();
 }
 
 async function refreshOverview() {
@@ -296,6 +314,10 @@ async function refreshOverview() {
   void healthRequest.then((health) => {
     $("#health").textContent = health.status === "ok" ? "服务正常" : "服务异常";
   });
+  if (!session?.access_token) {
+    applyPermissions();
+    return;
+  }
   const [me, docs, audit, evaluation, kbList] = await Promise.all([
     fetchJson("/api/me"),
     fetchJson("/api/documents"),
@@ -410,6 +432,32 @@ async function saveMember(event) {
   }
 }
 
+async function createKnowledgeBase(event) {
+  event.preventDefault();
+  const button = $("#knowledge-base-save");
+  setBusy(button, true, "创建中");
+  try {
+    const knowledgeBase = await fetchJson("/api/knowledge-bases", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: $("#knowledge-base-name").value.trim(),
+        department: $("#knowledge-base-department").value.trim() || "general",
+      }),
+    });
+    selectedKnowledgeBaseId = knowledgeBase.id;
+    $("#knowledge-base-status").textContent = "知识库已创建";
+    event.target.reset();
+    await refreshOverview();
+    await refreshMembers();
+  } catch (error) {
+    $("#knowledge-base-status").textContent = error.message;
+  } finally {
+    setBusy(button, false);
+    applyPermissions();
+  }
+}
+
 async function createAdminUser(event) {
   event.preventDefault();
   const button = $("#admin-user-save");
@@ -443,9 +491,9 @@ $("#example").addEventListener("click", () => { $("#question").value = DEMO_QUES
 $("#upload-form").addEventListener("submit", uploadDocument);
 $("#url-ingest-form").addEventListener("submit", ingestUrl);
 $("#member-form").addEventListener("submit", saveMember);
+$("#knowledge-base-form").addEventListener("submit", createKnowledgeBase);
 $("#admin-user-form").addEventListener("submit", createAdminUser);
 $("#refresh-system-status").addEventListener("click", refreshSystemStatus);
-$("#user-select").addEventListener("change", refreshOverview);
 $("#knowledge-base-select").addEventListener("change", () => {
   selectedKnowledgeBaseId = $("#knowledge-base-select").value;
   localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);

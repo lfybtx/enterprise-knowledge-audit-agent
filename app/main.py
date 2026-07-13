@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.services.chunking import build_chunks
-from app.services.auth import AuthError, account_by_user_id, authenticate_demo_user, create_access_token, verify_access_token
+from app.services.auth import AuthError, create_access_token, verify_access_token
 from app.services.model_provider import ChatProviderSettings, ModelConfigurationError, ModelProviderSettings
 from app.services.object_storage import ObjectStorageError, store_upload
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
@@ -28,51 +28,9 @@ DOCUMENTS_PATH = ROOT / "app" / "data" / "sample_documents.json"
 RUNTIME_DIR = ROOT / "data" / "runtime"
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 RUNTIME_DOCUMENTS_PATH = RUNTIME_DIR / "documents.json"
+# Legacy sample documents retain this internal owner id. It is not a login account.
 DEFAULT_USER_ID = "local-demo"
-USER_HEADER = "X-User-Id"
 KNOWLEDGE_BASE_HEADER = "X-Knowledge-Base-Id"
-DEMO_USERS = {
-    "admin": "Admin",
-    "local-demo": "Local Demo",
-    "demo-alice": "Alice",
-    "demo-bob": "Bob",
-}
-DEMO_USER_ROLES = {
-    "admin": "admin",
-    "local-demo": "owner",
-    "demo-alice": "editor",
-    "demo-bob": "viewer",
-}
-WRITE_ROLES = {"owner", "editor"}
-DEMO_KNOWLEDGE_BASES = [
-    {"id": "kb-shared", "name": "Shared Compliance KB"},
-    {"id": "kb-alice", "name": "Alice Workspace"},
-    {"id": "kb-bob", "name": "Bob Review KB"},
-]
-DEMO_KNOWLEDGE_BASE_ROLES = {
-    "admin": {
-        "kb-shared": "owner",
-        "kb-alice": "owner",
-        "kb-bob": "owner",
-    },
-    "local-demo": {
-        "kb-shared": "owner",
-        "kb-alice": "editor",
-        "kb-bob": "viewer",
-    },
-    "demo-alice": {
-        "kb-shared": "editor",
-        "kb-alice": "owner",
-        "kb-bob": "viewer",
-    },
-    "demo-bob": {
-        "kb-shared": "viewer",
-        "kb-alice": "viewer",
-        "kb-bob": "viewer",
-    },
-}
-
-
 class DocumentCreate(BaseModel):
     title: str = Field(min_length=2, max_length=120)
     source: str = Field(min_length=2, max_length=200)
@@ -149,7 +107,7 @@ class AuthenticatedUser(BaseModel):
     role: str
     tenant_id: str = "tenant-demo"
     department: str = "general"
-    auth_mode: str = "header"
+    auth_mode: str = "jwt"
 
 
 def load_seed_documents() -> list[dict[str, Any]]:
@@ -214,79 +172,29 @@ def document_visible_to_user(document: dict[str, Any], user_external_id: str) ->
     return document.get("owner_id", DEFAULT_USER_ID) == user_external_id
 
 
-def normalize_user_id(user_external_id: str | None) -> str:
-    return (user_external_id or DEFAULT_USER_ID).strip() or DEFAULT_USER_ID
-
-
-def require_user_id(user_external_id: str | None) -> str:
-    normalized = (user_external_id or "").strip()
-    if not normalized:
-        raise HTTPException(status_code=401, detail=f"Missing {USER_HEADER} header")
-    if normalized not in DEMO_USERS:
-        raise HTTPException(status_code=401, detail="Unknown user")
-    return normalized
-
-
 def get_authenticated_user(
     authorization: Optional[str] = Header(default=None, alias="Authorization"),
-    user_external_id: Optional[str] = Header(default=None, alias=USER_HEADER),
 ) -> AuthenticatedUser:
-    if authorization:
-        scheme, _, token = authorization.partition(" ")
-        if scheme.lower() != "bearer" or not token.strip():
-            raise HTTPException(status_code=401, detail="Invalid Authorization header")
-        try:
-            payload = verify_access_token(token.strip())
-        except AuthError as error:
-            raise HTTPException(status_code=401, detail=str(error)) from error
-        user_id = str(payload["sub"])
-        account = database_account_by_user_id(user_id) or account_by_user_id(user_id)
-        if account is None:
-            raise HTTPException(status_code=401, detail="Unknown user")
-        if isinstance(account, dict):
-            display_name = str(account["display_name"])
-            role = str(account["role"])
-            department = str(account["department"])
-        else:
-            display_name = account.display_name
-            role = account.role
-            department = account.department
-        return AuthenticatedUser(
-            id=user_id,
-            display_name=str(payload.get("name") or display_name),
-            role=str(payload.get("role") or role),
-            tenant_id=str(payload.get("tenant_id") or "tenant-demo"),
-            department=str(payload.get("department") or department),
-            auth_mode="jwt",
-        )
-
-    user_id = require_user_id(user_external_id)
-    account = account_by_user_id(user_id)
+    if not authorization:
+        raise HTTPException(status_code=401, detail="Login is required")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token.strip():
+        raise HTTPException(status_code=401, detail="Invalid Authorization header")
+    try:
+        payload = verify_access_token(token.strip())
+    except AuthError as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+    user_id = str(payload["sub"])
+    account = database_account_by_user_id(user_id)
+    if account is None:
+        raise HTTPException(status_code=401, detail="User is unavailable or has been disabled")
     return AuthenticatedUser(
         id=user_id,
-        display_name=DEMO_USERS[user_id],
-        role=DEMO_USER_ROLES[user_id],
-        tenant_id=account.tenant_id if account else "tenant-demo",
-        department=account.department if account else "general",
-        auth_mode="header",
+        display_name=str(account["display_name"]),
+        role=str(account["role"]),
+        tenant_id=str(account["tenant_id"]),
+        department=str(account["department"]),
     )
-
-
-def require_write_access(user_external_id: str) -> None:
-    if DEMO_USER_ROLES.get(user_external_id) == "admin":
-        return
-    session = database_session()
-    if session is not None:
-        try:
-            from app.repositories.knowledge_repository import is_admin_user
-
-            if is_admin_user(session, user_external_id):
-                return
-        finally:
-            session.close()
-    role = DEMO_USER_ROLES.get(user_external_id)
-    if role not in WRITE_ROLES:
-        raise HTTPException(status_code=403, detail="Current user cannot write to this knowledge base")
 
 
 def database_account_by_user_id(user_external_id: str) -> dict[str, Any] | None:
@@ -304,19 +212,6 @@ def database_account_by_user_id(user_external_id: str) -> dict[str, Any] | None:
 def require_admin(current_user: AuthenticatedUser) -> None:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin privileges are required")
-
-
-def knowledge_bases_for_user(user_external_id: str) -> list[dict[str, object]]:
-    roles = DEMO_KNOWLEDGE_BASE_ROLES[user_external_id]
-    return [
-        {
-            "id": knowledge_base["id"],
-            "name": knowledge_base["name"],
-            "role": roles[knowledge_base["id"]],
-            "can_write": roles[knowledge_base["id"]] in WRITE_ROLES,
-        }
-        for knowledge_base in DEMO_KNOWLEDGE_BASES
-    ]
 
 
 def database_session():
@@ -672,26 +567,15 @@ def login(payload: LoginRequest) -> dict[str, object]:
         finally:
             session.close()
     if account is None:
-        account = authenticate_demo_user(payload.username, payload.password)
-    if account is None:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token(account)
-    if isinstance(account, dict):
-        user_payload = {
-            "id": account["user_id"],
-            "display_name": account["display_name"],
-            "role": account["role"],
-            "tenant_id": account["tenant_id"],
-            "department": account["department"],
-        }
-    else:
-        user_payload = {
-            "id": account.user_id,
-            "display_name": account.display_name,
-            "role": account.role,
-            "tenant_id": account.tenant_id,
-            "department": account.department,
-        }
+    user_payload = {
+        "id": account["user_id"],
+        "display_name": account["display_name"],
+        "role": account["role"],
+        "tenant_id": account["tenant_id"],
+        "department": account["department"],
+    }
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -740,17 +624,7 @@ def get_current_user(current_user: AuthenticatedUser = Depends(get_authenticated
 def list_users(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> list[dict[str, object]]:
     session = database_session()
     if session is None:
-        fallback = [
-            {
-                "external_id": user_id,
-                "username": user_id,
-                "display_name": name,
-                "role": DEMO_USER_ROLES.get(user_id, "user"),
-                "is_active": True,
-            }
-            for user_id, name in DEMO_USERS.items()
-        ]
-        return fallback
+        raise HTTPException(status_code=503, detail="User directory requires PostgreSQL")
     try:
         from app.repositories.knowledge_repository import list_user_records
 
@@ -815,7 +689,7 @@ def list_knowledge_bases(current_user: AuthenticatedUser = Depends(get_authentic
             return list_knowledge_base_records(session, current_user.id)
         finally:
             session.close()
-    return knowledge_bases_for_user(current_user.id)
+    raise HTTPException(status_code=503, detail="Knowledge base management requires PostgreSQL")
 
 
 @app.post("/api/knowledge-bases", status_code=201)
@@ -823,8 +697,6 @@ def create_kb(
     payload: KnowledgeBaseCreateRequest,
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> dict[str, object]:
-    if current_user.role not in WRITE_ROLES and current_user.role != "admin":
-        raise HTTPException(status_code=403, detail="Current role cannot create knowledge bases")
     session = database_session()
     if session is None:
         raise HTTPException(status_code=503, detail="Knowledge base management requires PostgreSQL")
@@ -925,7 +797,6 @@ def create_document(
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
     knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
-    require_write_access(current_user.id)
     document_id = str(uuid4())
     document = {
         "id": document_id,
@@ -952,7 +823,6 @@ async def upload_document(
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
     knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
-    require_write_access(current_user.id)
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
     try:
@@ -1015,7 +885,6 @@ def ingest_url_document(
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
     knowledge_base_id: Optional[str] = Header(default=None, alias=KNOWLEDGE_BASE_HEADER),
 ) -> dict[str, str]:
-    require_write_access(current_user.id)
     parsed_url = urlparse(payload.url)
     if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
         raise HTTPException(status_code=400, detail="Only http and https URLs can be ingested")
@@ -1122,7 +991,7 @@ def review_audit_run(
     payload: WorkflowReviewRequest,
     current_user: AuthenticatedUser = Depends(get_authenticated_user),
 ) -> dict[str, Any]:
-    if current_user.role not in WRITE_ROLES:
+    if current_user.role not in {"admin", "user"}:
         raise HTTPException(status_code=403, detail="Current role cannot review audit runs")
     if not os.getenv("DATABASE_URL"):
         raise HTTPException(status_code=503, detail="Workflow reviews require PostgreSQL")

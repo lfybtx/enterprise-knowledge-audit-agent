@@ -20,14 +20,6 @@
           <button id="login-button" type="submit" class="secondary">登录</button>
           <button id="logout-button" type="button" class="secondary" hidden>退出</button>
         </form>
-        <label class="user-switcher" for="user-select">
-          <span>演示用户</span>
-          <select id="user-select">
-            <option value="local-demo">Local Demo</option>
-            <option value="demo-alice">Alice</option>
-            <option value="demo-bob">Bob</option>
-          </select>
-        </label>
         <span id="health" class="status">连接中</span>
       </div>
     </header>
@@ -36,7 +28,7 @@
       <nav class="tabs">
         <button type="button" class="secondary active" data-tab="workspace">审计工作台</button>
         <button type="button" class="secondary" data-tab="account">注册</button>
-        <button type="button" class="secondary" data-tab="admin" id="admin-tab" hidden>管理</button>
+        <button type="button" class="secondary" data-tab="admin" id="admin-tab" hidden>知识库管理</button>
       </nav>
 
       <div data-page="workspace">
@@ -163,6 +155,12 @@
               <h2>知识库成员</h2>
             </div>
           </div>
+          <form id="knowledge-base-form" class="member-form">
+            <input id="knowledge-base-name" type="text" placeholder="知识库名称" minlength="2" maxlength="120" required />
+            <input id="knowledge-base-department" type="text" placeholder="部门" />
+            <button id="knowledge-base-save" type="submit" class="secondary">创建知识库</button>
+            <span id="knowledge-base-status" class="upload-status" role="status"></span>
+          </form>
           <div id="permission-members" class="member-list"></div>
           <form id="member-form" class="member-form">
             <select id="member-user-id"></select>
@@ -176,7 +174,7 @@
           </form>
         </section>
 
-        <section class="permission-section">
+        <section class="permission-section" data-admin-only>
           <div>
             <p class="panel-label">用户管理</p>
             <h2>系统用户</h2>
@@ -196,7 +194,7 @@
           <div id="user-table" class="user-table"></div>
         </section>
 
-        <section class="system-section">
+        <section class="system-section" data-admin-only>
           <div class="section-heading">
             <div>
               <p class="panel-label">系统运维</p>
@@ -209,6 +207,6 @@
         </section>
       </div>
     </main>
-    <script src="/static/app.js?v=20260714-auth-admin"></script>
+    <script src="/static/app.js?v=20260714-database-auth"></script>
   </body>
 </html>

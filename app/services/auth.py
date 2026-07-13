@@ -6,24 +6,12 @@ import hmac
 import json
 import os
 import time
-from dataclasses import dataclass
-from typing import Any, Optional
+from typing import Any
 from secrets import token_urlsafe
 
 
 class AuthError(RuntimeError):
     """Raised when a login token or credential cannot be trusted."""
-
-
-@dataclass(frozen=True)
-class DemoAccount:
-    user_id: str
-    username: str
-    password_hash: str
-    display_name: str
-    tenant_id: str
-    department: str
-    role: str
 
 
 PASSWORD_ITERATIONS = 120_000
@@ -51,73 +39,13 @@ def _legacy_hash_password(password: str) -> str:
     return hashlib.sha256(password.encode("utf-8")).hexdigest()
 
 
-DEMO_ACCOUNTS: dict[str, DemoAccount] = {
-    "admin": DemoAccount(
-        user_id="admin",
-        username="admin",
-        password_hash=_legacy_hash_password("admin123456"),
-        display_name="Admin",
-        tenant_id="tenant-demo",
-        department="platform",
-        role="admin",
-    ),
-    "local-demo": DemoAccount(
-        user_id="local-demo",
-        username="local-demo",
-        password_hash=_legacy_hash_password("demo123456"),
-        display_name="Local Demo",
-        tenant_id="tenant-demo",
-        department="compliance",
-        role="owner",
-    ),
-    "alice": DemoAccount(
-        user_id="demo-alice",
-        username="alice",
-        password_hash=_legacy_hash_password("alice123456"),
-        display_name="Alice",
-        tenant_id="tenant-demo",
-        department="sales",
-        role="editor",
-    ),
-    "bob": DemoAccount(
-        user_id="demo-bob",
-        username="bob",
-        password_hash=_legacy_hash_password("bob123456"),
-        display_name="Bob",
-        tenant_id="tenant-demo",
-        department="legal",
-        role="viewer",
-    ),
-}
-
-
-def authenticate_demo_user(username: str, password: str) -> Optional[DemoAccount]:
-    account = DEMO_ACCOUNTS.get(username.strip())
-    if account is None:
-        return None
-    if not verify_password(password, account.password_hash):
-        return None
-    return account
-
-
-def account_by_user_id(user_id: str) -> Optional[DemoAccount]:
-    return next((account for account in DEMO_ACCOUNTS.values() if account.user_id == user_id), None)
-
-
-def create_access_token(account: DemoAccount | dict[str, Any], expires_in_seconds: int = 8 * 60 * 60) -> str:
+def create_access_token(account: dict[str, Any], expires_in_seconds: int = 8 * 60 * 60) -> str:
     now = int(time.time())
-    if isinstance(account, dict):
-        user_id = str(account["user_id"])
-        display_name = str(account["display_name"])
-        tenant_id = str(account.get("tenant_id") or "tenant-demo")
-        department = str(account.get("department") or "general")
-        role = str(account.get("role") or "user")
-    else:
-        user_id = account.user_id
-        display_name = account.display_name
-        tenant_id = account.tenant_id
-        department = account.department
-        role = account.role
+    user_id = str(account["user_id"])
+    display_name = str(account["display_name"])
+    tenant_id = str(account.get("tenant_id") or "tenant-demo")
+    department = str(account.get("department") or "general")
+    role = str(account.get("role") or "user")
     payload = {
         "sub": user_id,
         "name": display_name,
