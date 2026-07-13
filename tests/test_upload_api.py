@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 import httpx
+import pytest
 
 import app.main as main
 from app.services.retrieval import HybridRetriever
@@ -192,6 +193,27 @@ def test_knowledge_bases_endpoint_returns_demo_roles_without_database(monkeypatc
     assert payload[0]["role"] == "editor"
     assert payload[1]["role"] == "owner"
     assert payload[2]["can_write"] is False
+
+
+def test_database_user_without_knowledge_base_gets_empty_list(monkeypatch):
+    pytest.importorskip("sqlalchemy")
+
+    class Session:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    session = Session()
+    monkeypatch.setattr(main, "database_session", lambda: session)
+
+    from app.repositories import knowledge_repository
+
+    monkeypatch.setattr(knowledge_repository, "list_knowledge_base_records", lambda _session, _user_id: [])
+    user = main.AuthenticatedUser(id="new-user", display_name="New User", role="user")
+
+    assert main.list_knowledge_bases(user) == []
+    assert session.closed is True
 
 
 def test_audit_log_is_filtered_by_user_header(monkeypatch):

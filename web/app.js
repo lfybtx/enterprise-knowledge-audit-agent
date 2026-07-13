@@ -290,15 +290,19 @@ async function refreshAdminPage() {
 }
 
 async function refreshOverview() {
-  const [health, me, docs, audit, evaluation, kbList] = await Promise.all([
-    fetch("/api/health").then((response) => response.json()).catch(() => ({ status: "error" })),
+  const healthRequest = fetch("/api/health")
+    .then((response) => response.json())
+    .catch(() => ({ status: "error" }));
+  void healthRequest.then((health) => {
+    $("#health").textContent = health.status === "ok" ? "服务正常" : "服务异常";
+  });
+  const [me, docs, audit, evaluation, kbList] = await Promise.all([
     fetchJson("/api/me"),
     fetchJson("/api/documents"),
     fetchJson("/api/audit-log"),
     fetchJson("/api/evaluation-results").catch(() => ({ summary: {} })),
     fetchJson("/api/knowledge-bases"),
   ]);
-  $("#health").textContent = health.status === "ok" ? "服务正常" : "服务异常";
   $("#document-count").textContent = docs.length;
   $("#active-user").textContent = `${me.display_name} (${me.id})`;
   $("#audit-count").textContent = audit.length;
@@ -486,5 +490,5 @@ renderDemoQuestions();
 syncAuthUi();
 setPage("workspace");
 refreshOverview().catch((error) => {
-  $("#health").textContent = error.message;
+  console.error("Unable to refresh workspace data", error);
 });

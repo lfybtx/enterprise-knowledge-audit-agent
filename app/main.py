@@ -810,9 +810,9 @@ def list_knowledge_bases(current_user: AuthenticatedUser = Depends(get_authentic
         try:
             from app.repositories.knowledge_repository import list_knowledge_base_records
 
-            records = list_knowledge_base_records(session, current_user.id)
-            if records:
-                return records
+            # A registered user may not belong to a knowledge base yet. Do not
+            # fall through to the demo mapping, which only accepts demo ids.
+            return list_knowledge_base_records(session, current_user.id)
         finally:
             session.close()
     return knowledge_bases_for_user(current_user.id)
