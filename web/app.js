@@ -187,10 +187,13 @@ function renderKnowledgeBases(items) {
   if (!knowledgeBases.some((item) => item.id === selectedKnowledgeBaseId)) {
     selectedKnowledgeBaseId = knowledgeBases[0]?.id || "";
   }
-  $("#knowledge-base-select").innerHTML = knowledgeBases.map((item) => `
+  const options = knowledgeBases.map((item) => `
     <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(item.role)})</option>
   `).join("");
+  $("#knowledge-base-select").innerHTML = options;
   $("#knowledge-base-select").value = selectedKnowledgeBaseId;
+  $("#management-knowledge-base-select").innerHTML = options;
+  $("#management-knowledge-base-select").value = selectedKnowledgeBaseId;
   localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);
 }
 
@@ -500,12 +503,16 @@ $("#member-form").addEventListener("submit", saveMember);
 $("#knowledge-base-form").addEventListener("submit", createKnowledgeBase);
 $("#admin-user-form").addEventListener("submit", createAdminUser);
 $("#refresh-system-status").addEventListener("click", refreshSystemStatus);
-$("#knowledge-base-select").addEventListener("change", () => {
-  selectedKnowledgeBaseId = $("#knowledge-base-select").value;
+function handleKnowledgeBaseChange(event) {
+  selectedKnowledgeBaseId = event.target.value;
+  $("#knowledge-base-select").value = selectedKnowledgeBaseId;
+  $("#management-knowledge-base-select").value = selectedKnowledgeBaseId;
   localStorage.setItem("audit-agent-kb-id", selectedKnowledgeBaseId);
   applyPermissions();
   refreshMembers();
-});
+}
+$("#knowledge-base-select").addEventListener("change", handleKnowledgeBaseChange);
+$("#management-knowledge-base-select").addEventListener("change", handleKnowledgeBaseChange);
 document.querySelector(".tabs").addEventListener("click", (event) => {
   const button = event.target.closest("button[data-tab]");
   if (button && !button.hidden) setPage(button.dataset.tab);
