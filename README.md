@@ -40,7 +40,8 @@ Detailed report: [docs/evaluation-report.md](docs/evaluation-report.md)
 | Audit findings | Sensitive export risk, incident response, and legacy-policy conflicts |
 | Report export | JSON, Markdown, and Unicode-capable PDF |
 | Audit history | Workflow traces persisted in PostgreSQL when Docker stack is used |
-| Permissions | `X-User-Id` scoped document visibility |
+| Permissions | JWT login with `X-User-Id` demo fallback |
+| Object storage | MinIO bucket for uploaded source files, with local disk fallback |
 | Evaluation | 50 cases, JSON results, Markdown report, and UI baseline panel |
 
 ## Run Locally
@@ -116,6 +117,17 @@ docker compose up --build
 
 Docker Compose starts the app and PostgreSQL with pgvector enabled. Uploaded documents and workflow traces are persisted in PostgreSQL when `DATABASE_URL` is configured.
 
+The Compose stack also starts MinIO:
+
+- API endpoint inside Docker: `minio:9000`
+- Console: `http://127.0.0.1:9001`
+- Default account: `minioadmin / minioadmin`
+- Upload bucket: `audit-documents`
+
+When `MINIO_ENDPOINT` is configured, uploaded source files are stored as
+`minio://audit-documents/uploads/<document-id>/<filename>`. Without MinIO
+settings, the app falls back to `data/runtime/uploads`.
+
 ## Test And Evaluate
 
 ```bash
@@ -139,9 +151,13 @@ python scripts/make_readme_screenshot.py
 Ask a question:
 
 ```bash
+TOKEN=$(curl -s -X POST http://127.0.0.1:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"alice\",\"password\":\"alice123456\"}" | python -c "import json,sys; print(json.load(sys.stdin)['access_token'])")
+
 curl -X POST http://127.0.0.1:8000/api/ask ^
   -H "Content-Type: application/json" ^
-  -H "X-User-Id: demo-alice" ^
+  -H "Authorization: Bearer $TOKEN" ^
   -d "{\"question\":\"Can the legacy sales tool directly download the full customer list?\"}"
 ```
 

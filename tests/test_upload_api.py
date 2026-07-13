@@ -41,6 +41,7 @@ def test_unknown_user_is_rejected():
 
 def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
     monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("MINIO_ENDPOINT", raising=False)
     monkeypatch.setattr(main, "UPLOAD_DIR", tmp_path / "uploads")
     monkeypatch.setattr(main, "RUNTIME_DOCUMENTS_PATH", tmp_path / "documents.json")
     original_documents = list(main.documents)
@@ -63,6 +64,8 @@ def test_upload_txt_document_is_indexed(tmp_path, monkeypatch):
 
     assert response.status_code == 201
     document_id = response.json()["id"]
+    assert response.json()["storage_backend"] == "local"
+    assert response.json()["source"].startswith("data/runtime/uploads/")
 
     try:
         hits = main.retriever.search("客户名单导出需要区域经理审批吗？", limit=1)

@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from app.services.chunking import build_chunks
 from app.services.auth import AuthError, account_by_user_id, authenticate_demo_user, create_access_token, verify_access_token
 from app.services.model_provider import ModelConfigurationError, ModelProviderSettings
+from app.services.object_storage import ObjectStorageError, store_upload
 from app.services.parsers import DocumentParseError, EmptyDocumentError, UnsupportedFileTypeError, parse_document_sections
 from app.services.report_export import export_report
 from app.services.retrieval import HybridRetriever
@@ -556,15 +557,21 @@ async def upload_document(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     document_id = str(uuid4())
-    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    stored_name = f"{document_id}_{filename}"
-    stored_path = UPLOAD_DIR / stored_name
-    stored_path.write_bytes(raw_content)
+    try:
+        stored_object = store_upload(
+            content=raw_content,
+            filename=filename,
+            object_id=document_id,
+            content_type=file.content_type or "application/octet-stream",
+            fallback_dir=UPLOAD_DIR,
+        )
+    except ObjectStorageError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     document = {
         "id": document_id,
         "title": title,
-        "source": f"data/runtime/uploads/{stored_name}",
+        "source": stored_object.source,
         "file_type": parsed_document.file_type,
         "content": parsed_document.text,
         "chunks": build_chunks(
@@ -579,10 +586,16 @@ async def upload_document(
             "event": "document_uploaded",
             "document_id": document["id"],
             "source": document["source"],
+            "storage_backend": stored_object.backend,
             "user_id": current_user.id,
         }
     )
-    return {"id": document["id"], "message": "Document uploaded and indexed"}
+    return {
+        "id": document["id"],
+        "message": "Document uploaded and indexed",
+        "source": document["source"],
+        "storage_backend": stored_object.backend,
+    }
 
 
 @app.post("/api/ask")
