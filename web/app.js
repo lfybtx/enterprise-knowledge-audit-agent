@@ -253,13 +253,14 @@ function renderEvaluation(payload) {
 
 function renderMembers(members) {
   const canManage = Boolean(currentKnowledgeBase()?.can_manage);
+  const canRemove = isAdmin() && canManage;
   $("#permission-members").innerHTML = members.length ? members.map((member) => {
     const isSelf = member.user_id === currentUserId();
     return `
       <div class="member-row">
         <div><strong>${escapeHtml(member.display_name || member.user_id)}</strong><span>${escapeHtml(member.user_id)}</span></div>
         <span>${escapeHtml(member.role)}</span>
-        <button type="button" class="secondary" data-remove-member="${escapeHtml(member.user_id)}" ${!canManage || isSelf ? "disabled" : ""}>移除</button>
+        <button type="button" class="secondary" data-remove-member="${escapeHtml(member.user_id)}" ${!canRemove || isSelf ? "disabled" : ""}>移除</button>
       </div>
     `;
   }).join("") : '<div class="document muted">当前知识库暂无成员</div>';

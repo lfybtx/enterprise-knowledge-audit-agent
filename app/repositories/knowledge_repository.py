@@ -329,6 +329,8 @@ def remove_knowledge_base_member(
 ) -> None:
     if actor_external_id == member_external_id:
         raise PermissionError("You cannot remove yourself from a knowledge base")
+    if not is_admin_user(session, actor_external_id):
+        raise PermissionError("Only admin can remove knowledge base members")
     if not user_can_manage_knowledge_base(session, actor_external_id, knowledge_base_id):
         raise PermissionError("Current user cannot manage this knowledge base")
     try:
