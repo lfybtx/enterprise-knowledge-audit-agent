@@ -75,6 +75,8 @@ def test_openai_compatible_chat_provider_reads_non_sensitive_status(monkeypatch)
 def test_openai_compatible_chat_provider_can_use_default_ollama_key(monkeypatch):
     monkeypatch.setenv("CHAT_PROVIDER", "openai-compatible")
     monkeypatch.delenv("CHAT_OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("CHAT_OPENAI_BASE_URL", raising=False)
+    monkeypatch.delenv("CHAT_OPENAI_MODEL", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
 
     settings = ChatProviderSettings.from_environment()

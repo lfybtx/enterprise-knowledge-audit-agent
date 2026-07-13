@@ -60,6 +60,7 @@ def export_report_markdown(report: dict[str, Any]) -> str:
                 f"- Level: {finding['level']}",
                 f"- Rationale: {finding['rationale']}",
                 f"- Recommendation: {finding['recommendation']}",
+                f"- Evidence refs: {', '.join(finding.get('evidence_refs', [])) or 'None'}",
                 f"- Evidence IDs: {', '.join(finding['evidence_ids'])}",
                 "",
             ]
@@ -131,6 +132,10 @@ def export_report_pdf(report: dict[str, Any]) -> bytes:
                 Paragraph(f"<b>Level:</b> {escape_html(str(finding['level']))}", styles["Body"]),
                 Paragraph(f"<b>Rationale:</b> {escape_html(str(finding['rationale']))}", styles["Body"]),
                 Paragraph(f"<b>Recommendation:</b> {escape_html(str(finding['recommendation']))}", styles["Body"]),
+                Paragraph(
+                    f"<b>Evidence refs:</b> {escape_html(', '.join(finding.get('evidence_refs', [])) or 'None')}",
+                    styles["Body"],
+                ),
                 Paragraph(f"<b>Evidence IDs:</b> {escape_html(', '.join(finding['evidence_ids']))}", styles["Body"]),
                 Spacer(1, 3 * mm),
             ]

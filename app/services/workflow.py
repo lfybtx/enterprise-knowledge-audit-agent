@@ -166,7 +166,7 @@ def _run_sequential_workflow(
         "answer": answer,
         "citations": [chunk_to_citation(item, rank=index) for index, item in enumerate(evidence, start=1)],
         "retrieval_diagnostics": retrieval_diagnostics,
-        "findings": [finding_to_payload(item) for item in findings],
+        "findings": report["findings"],
         "report": report,
         "workflow_steps": [step.__dict__ for step in workflow_steps],
         "workflow_trace": [entry.__dict__ for entry in workflow_trace],
@@ -191,11 +191,24 @@ def build_risk_report(
     findings: list[AuditFinding],
 ) -> dict[str, Any]:
     evidence_list = list(evidence)
+    evidence_rank_by_chunk_id = {chunk.chunk_id: index for index, chunk in enumerate(evidence_list, start=1)}
     risk_counts = {"high": 0, "medium": 0, "low": 0}
     normalized_findings = []
     for finding in findings:
         bucket = normalize_level(finding.level)
         risk_counts[bucket] += 1
+        evidence_sources = [
+            {
+                "document_id": chunk.document_id,
+                "chunk_id": chunk.chunk_id,
+                "title": chunk.title,
+                "source": chunk.source,
+                "location_label": chunk.location_label,
+                "evidence_rank": evidence_rank_by_chunk_id.get(chunk.chunk_id),
+            }
+            for chunk in evidence_list
+            if chunk.document_id in finding.evidence_ids
+        ]
         normalized_findings.append(
             {
                 "level": finding.level,
@@ -203,17 +216,12 @@ def build_risk_report(
                 "rationale": finding.rationale,
                 "recommendation": finding.recommendation,
                 "evidence_ids": finding.evidence_ids,
-                "evidence_sources": [
-                    {
-                        "document_id": chunk.document_id,
-                        "chunk_id": chunk.chunk_id,
-                        "title": chunk.title,
-                        "source": chunk.source,
-                        "location_label": chunk.location_label,
-                    }
-                    for chunk in evidence_list
-                    if chunk.document_id in finding.evidence_ids
+                "evidence_refs": [
+                    f"Evidence {source['evidence_rank']}"
+                    for source in evidence_sources
+                    if source.get("evidence_rank") is not None
                 ],
+                "evidence_sources": evidence_sources,
             }
         )
 

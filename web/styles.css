@@ -212,6 +212,9 @@ button:disabled { opacity: 0.65; cursor: wait; }
 .candidate-row span { color: #334155; overflow-wrap: anywhere; }
 .candidate-row small { grid-column: 2; color: #64748b; }
 .trace-head h3 { font-size: 16px; margin: 0 0 10px; }
+.finding-evidence { margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0; color: #475569; font-size: 13px; }
+.finding-evidence ul { margin: 8px 0 0; padding-left: 18px; display: grid; gap: 5px; }
+.finding-evidence li span { display: block; color: #64748b; font-size: 12px; margin-top: 2px; }
 .audit-history {
   margin-top: 20px;
   background: #fff;

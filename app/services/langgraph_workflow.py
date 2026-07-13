@@ -45,13 +45,14 @@ def run_langgraph_workflow(
     state = graph.invoke({"question": question, "evidence_loader": evidence_loader, "workflow_steps": [], "workflow_trace": []})
     evidence = state.get("evidence", [])
     findings = state.get("findings", [])
+    report = state.get("report", {})
     return {
         "trace_id": _trace_id(),
         "answer": state.get("answer") or grounded_answer(question, evidence),
         "citations": [chunk_to_citation(item, rank=index) for index, item in enumerate(evidence, start=1)],
         "retrieval_diagnostics": state.get("retrieval_diagnostics", {}),
-        "findings": [finding_to_payload(item) for item in findings],
-        "report": state.get("report", {}),
+        "findings": report.get("findings", [finding_to_payload(item) for item in findings]),
+        "report": report,
         "workflow_steps": state.get("workflow_steps", []),
         "workflow_trace": state.get("workflow_trace", []),
         "approval_status": state.get("approval_status", "not_required"),

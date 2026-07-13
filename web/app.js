@@ -356,6 +356,7 @@ function renderResult(payload) {
     <div class="finding ${finding.level.toLowerCase().includes("high") ? "high" : ""}">
       <h3>${escapeHtml(finding.level)} - ${escapeHtml(finding.title)}</h3>
       <p>${escapeHtml(finding.rationale)}</p>
+      ${renderFindingEvidence(finding)}
       <p><strong>建议动作：</strong> ${escapeHtml(finding.recommendation)}</p>
     </div>
   `).join("");
@@ -376,6 +377,28 @@ function renderResult(payload) {
   selectedTraceId = "";
   lastWorkflowTrace = payload.workflow_trace || [];
   renderTrace(lastWorkflowTrace, `当前流程 trace - ${payload.trace_id}`);
+}
+
+function renderFindingEvidence(finding) {
+  const refs = finding.evidence_refs || [];
+  const sources = finding.evidence_sources || [];
+  if (!refs.length && !sources.length) return "";
+  return `
+    <div class="finding-evidence">
+      ${refs.length ? `<div><strong>引用证据：</strong> ${refs.map(escapeHtml).join(", ")}</div>` : ""}
+      ${sources.length ? `
+        <ul>
+          ${sources.map((source) => `
+            <li>
+              ${source.evidence_rank ? `Evidence ${escapeHtml(source.evidence_rank)} - ` : ""}
+              ${escapeHtml(source.title || source.document_id)}
+              <span>${escapeHtml(source.source || "")} ${escapeHtml(source.location_label || "")}</span>
+            </li>
+          `).join("")}
+        </ul>
+      ` : ""}
+    </div>
+  `;
 }
 
 function renderApprovalPanel(payload) {
