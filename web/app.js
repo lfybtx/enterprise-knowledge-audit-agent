@@ -79,7 +79,11 @@ function syncAuthUi() {
   $("#login-button").textContent = loggedIn ? "已登录" : "登录";
   $("#admin-tab").hidden = !loggedIn;
   document.querySelectorAll("[data-admin-only]").forEach((node) => {
-    node.hidden = !isAdmin();
+    if (authVerified && !isAdmin()) {
+      node.remove();
+    } else {
+      node.hidden = !isAdmin();
+    }
   });
 }
 
@@ -217,7 +221,9 @@ function renderUsers() {
   $("#member-user-id").innerHTML = activeUsers.map((user) => `
     <option value="${escapeHtml(user.external_id)}">${escapeHtml(user.display_name || user.username)} (${escapeHtml(user.external_id)})</option>
   `).join("");
-  $("#user-table").innerHTML = users.map((user) => `
+  const userTable = $("#user-table");
+  if (!userTable) return;
+  userTable.innerHTML = users.map((user) => `
     <div class="user-row">
       <strong>${escapeHtml(user.display_name || user.username)}</strong>
       <span>${escapeHtml(user.external_id)}</span>

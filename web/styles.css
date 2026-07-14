@@ -289,6 +289,16 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
   display: grid;
   gap: 16px;
 }
+.management-kb-select {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid #c6d2e2;
+  border-radius: 5px;
+  padding: 9px 11px;
+  background: #fff;
+  color: #172033;
+  font: inherit;
+}
 .member-list { display: grid; gap: 8px; }
 .member-row {
   display: grid;
