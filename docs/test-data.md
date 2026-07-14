@@ -57,7 +57,7 @@ data/sample_uploads
 data/evaluation_cases.json
 ```
 
-当前包含 60 条用例。每条用例通常包括：
+当前包含 122 条用例。每条用例通常包括：
 
 - 问题。
 - 期望命中的文档。
@@ -148,4 +148,3 @@ scripts/sql
 ```text
 docs/database-guide.md
 ```
-

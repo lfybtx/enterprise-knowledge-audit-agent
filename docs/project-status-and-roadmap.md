@@ -12,7 +12,7 @@
 - JWT 登录、知识库成员角色和文档可见范围控制；
 - 审计历史、Workflow Trace、报告导出和系统诊断；
 - Docker Compose 部署、PostgreSQL/pgvector、MinIO 和 Redis/RQ 异步任务；
-- 60 条评测用例及可复现评测结果。
+- 122 条评测用例及可复现评测结果。
 
 ## 最近验证结果
 
@@ -30,6 +30,8 @@
 - 2 个权限测试，需要启动 PostgreSQL 集成环境后执行。
 
 本次未完成 Docker Compose 集成验证，原因是当前环境无法访问 Docker Engine。部署前仍需实际验证数据库迁移、MinIO、Redis/RQ、worker 和健康检查链路。
+
+当前界面已覆盖审计工作台、知识库选择、文件和网页接入、上传重试状态、评测结果、风险分级、报告导出和人工复核。截图对应的操作说明见：[界面功能说明](ui-walkthrough.md)。
 
 ## 上线前待办
 
