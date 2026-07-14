@@ -39,10 +39,15 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   worker:
     build: .
-    command: sh -c "alembic upgrade head && rq worker --url redis://redis:6379/0 default"
+    command: rq worker --url redis://redis:6379/0 default
     env_file:
       - .env
     environment:
@@ -55,6 +60,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_started
+      app:
+        condition: service_healthy
 
   minio:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z
