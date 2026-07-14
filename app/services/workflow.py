@@ -7,7 +7,7 @@ from time import perf_counter
 from typing import Any, Callable, Iterable
 
 from app.services.audit import AuditFinding, assess
-from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer
+from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer, synthesize_findings
 from app.services.retrieval import RetrievedChunk, grounded_answer
 
 
@@ -92,7 +92,16 @@ def _run_sequential_workflow(
     )
 
     start = perf_counter()
-    findings = assess(question, evidence)
+    rule_findings = assess(question, evidence)
+    audit_trace_data = {}
+    try:
+        findings, audit_trace_data, audit_input, audit_output = synthesize_findings(question=question, evidence=evidence)
+        if not findings:
+            findings = rule_findings
+            audit_trace_data["status"] = "fallback"
+    except LlmSynthesisError as error:
+        findings, audit_input, audit_output = rule_findings, 0, 0
+        audit_trace_data = {"llm": {"status": "fallback", "failure_reason": str(error)}}
     audit_prompt = _make_prompt(question, evidence, findings, "audit_agent")
     workflow_steps.append(
         WorkflowStep(
@@ -110,9 +119,10 @@ def _run_sequential_workflow(
             duration_ms=workflow_steps[-1].duration_ms,
             prompt=audit_prompt,
             tool_calls=["assess"],
-            input_tokens=_estimate_tokens(audit_prompt),
-            output_tokens=max(1, len(findings) * 36),
+            input_tokens=_estimate_tokens(audit_prompt) + audit_input,
+            output_tokens=max(1, len(findings) * 36) + audit_output,
             failure_reason=None if findings else "No findings were produced",
+            trace_data=audit_trace_data,
         )
     )
 

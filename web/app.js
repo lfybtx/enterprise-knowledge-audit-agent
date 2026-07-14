@@ -399,6 +399,7 @@ async function ask() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ question }),
     });
+    lastAuditPayload = payload;
     $("#empty").hidden = true;
     $("#results").hidden = false;
     $("#answer").textContent = payload.answer || "未检索到可用证据。";
@@ -587,6 +588,18 @@ $("#user-table").addEventListener("click", async (event) => {
     $("#admin-user-status").textContent = error.message;
   }
 });
+
+let lastAuditPayload = null;
+$("#review-approve")?.addEventListener("click", () => submitReview("approved"));
+$("#review-reject")?.addEventListener("click", () => submitReview("rejected"));
+async function submitReview(decision) {
+  if (!lastAuditPayload?.trace_id) return;
+  let corrected_findings = null;
+  const raw = $("#corrected-findings")?.value.trim();
+  if (raw) { try { corrected_findings = JSON.parse(raw); } catch (_) { $("#review-status").textContent = "修正 JSON 格式错误"; return; } }
+  try { await fetchJson(`/api/audit-runs/${lastAuditPayload.trace_id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, corrected_findings }) }); $("#review-status").textContent = "人工修正已回写"; }
+  catch (error) { $("#review-status").textContent = error.message; }
+}
 
 renderDemoQuestions();
 syncAuthUi();

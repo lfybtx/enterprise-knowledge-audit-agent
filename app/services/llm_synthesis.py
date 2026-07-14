@@ -37,7 +37,57 @@ class SynthesisSchema(BaseModel):
     risk_summary: str = Field(min_length=1)
 
 
+class FindingSchema(BaseModel):
+    level: str = Field(pattern="^(High|Medium|Low)$")
+    title: str = Field(min_length=1)
+    rationale: str = Field(min_length=1)
+    recommendation: str = Field(min_length=1)
+    evidence_ids: list[str] = Field(min_length=1)
+
+
+class AuditSchema(BaseModel):
+    findings: list[FindingSchema]
+
+
 PROMPT_VERSION = os.getenv("CHAT_PROMPT_VERSION", "audit-synthesis-v2")
+
+
+def synthesize_findings(*, question: str, evidence: list[RetrievedChunk]) -> tuple[list[AuditFinding], dict[str, Any], int, int]:
+    """Ask the configured chat model to discover risks; callers provide rule fallback."""
+    try:
+        settings = ChatProviderSettings.from_environment()
+    except ModelConfigurationError as error:
+        raise LlmSynthesisError(str(error)) from error
+    if settings.provider != OPENAI_COMPATIBLE_PROVIDER or not evidence:
+        return [], {"status": "disabled", "prompt_version": PROMPT_VERSION}, 0, 0
+    evidence_text = "\n".join(
+        f"[Evidence {i}] document_id={item.document_id}; title={item.title}; text={item.text}"
+        for i, item in enumerate(evidence[:8], 1)
+    )
+    prompt = (
+        f"Prompt version: {PROMPT_VERSION}\nQuestion: {question}\nEvidence:\n{evidence_text}\n"
+        "Identify concrete enterprise risks grounded only in evidence. Return JSON exactly: "
+        '{"findings":[{"level":"High|Medium|Low","title":"...","rationale":"...",'
+        '"recommendation":"...","evidence_ids":["document_id"]}]}'
+    )
+    payload = {"model": settings.chat_model, "messages": [
+        {"role": "system", "content": "You are the audit_agent. Return only valid JSON."},
+        {"role": "user", "content": prompt},
+    ], "temperature": 0, "max_tokens": 1600, "response_format": {"type": "json_object"}}
+    try:
+        response = httpx.post(f"{settings.base_url}/chat/completions", headers={"Authorization": f"Bearer {settings.api_key}"}, json=payload, timeout=45.0)
+        response.raise_for_status()
+        body = response.json()
+        content = _extract_message_content(body)
+        parsed = AuditSchema.model_validate(json.loads(content))
+    except (httpx.HTTPError, ValueError, ValidationError) as error:
+        raise LlmSynthesisError(f"Audit agent response failed: {error}") from error
+    valid_ids = {item.document_id for item in evidence}
+    if any(doc_id not in valid_ids for item in parsed.findings for doc_id in item.evidence_ids):
+        raise LlmSynthesisError("Audit agent cited unknown evidence")
+    findings = [AuditFinding(**item.model_dump()) for item in parsed.findings]
+    usage = body.get("usage", {})
+    return findings, {"status": "completed", "provider": settings.provider, "chat_model": settings.chat_model, "prompt_version": PROMPT_VERSION, "schema": "audit_findings_v1"}, _usage_token(body, "prompt_tokens", _estimate_tokens(prompt)), _usage_token(body, "completion_tokens", _estimate_tokens(content))
 
 
 def synthesize_answer(

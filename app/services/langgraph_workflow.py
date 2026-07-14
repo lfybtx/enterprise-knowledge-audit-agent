@@ -8,7 +8,7 @@ from langgraph.graph import END, START, StateGraph
 from typing_extensions import TypedDict
 
 from app.services.audit import AuditFinding, assess
-from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer
+from app.services.llm_synthesis import LlmSynthesisError, synthesize_answer, synthesize_findings
 from app.services.retrieval import RetrievedChunk, grounded_answer
 from app.services.workflow import (
     WorkflowStep,
@@ -107,7 +107,17 @@ def _retrieval_agent(state: AuditGraphState) -> dict[str, Any]:
 
 def _audit_agent(state: AuditGraphState) -> dict[str, Any]:
     start = perf_counter()
-    findings = assess(state["question"], state.get("evidence", []))
+    rule_findings = assess(state["question"], state.get("evidence", []))
+    trace_data: dict[str, Any] = {}
+    try:
+        findings, llm_trace, llm_input, llm_output = synthesize_findings(question=state["question"], evidence=state.get("evidence", []))
+        trace_data["llm"] = llm_trace
+        if not findings:
+            findings = rule_findings
+            trace_data["llm"] = {**llm_trace, "status": "fallback", "reason": "no findings"}
+    except LlmSynthesisError as error:
+        findings, llm_input, llm_output = rule_findings, 0, 0
+        trace_data["llm"] = {"status": "fallback", "failure_reason": str(error)}
     prompt = _make_prompt(state["question"], state.get("evidence", []), findings, "audit_agent")
     detail = f"generated {len(findings)} findings"
     return _append_trace(
@@ -115,7 +125,7 @@ def _audit_agent(state: AuditGraphState) -> dict[str, Any]:
         WorkflowStep("audit_agent", "completed" if findings else "empty", detail, _elapsed_ms(start)),
         WorkflowTraceEntry(
             "audit_agent", "completed" if findings else "empty", detail, _elapsed_ms(start), prompt, ["assess"],
-            _estimate_tokens(prompt), max(1, len(findings) * 36), None if findings else "No findings were produced",
+            _estimate_tokens(prompt) + llm_input, max(1, len(findings) * 36) + llm_output, None if findings else "No findings were produced", trace_data,
         ),
         findings=findings,
     )
