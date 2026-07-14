@@ -12,6 +12,7 @@ let selectedKnowledgeBaseId = localStorage.getItem("audit-agent-kb-id") || "";
 let knowledgeBases = [];
 let users = [];
 let lastQuestion = "";
+let authVerified = false;
 
 function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
@@ -28,7 +29,7 @@ function currentUserId() {
 }
 
 function isAdmin() {
-  return session?.user?.role === "admin";
+  return authVerified && session?.user?.role === "admin";
 }
 
 function currentKnowledgeBase() {
@@ -47,6 +48,7 @@ async function fetchJson(url, options = {}) {
   const payload = await response.json().catch(() => ({}));
   if (response.status === 401 && session?.access_token) {
     session = null;
+    authVerified = false;
     localStorage.removeItem("audit-agent-session");
     syncAuthUi();
     applyPermissions();
@@ -145,7 +147,7 @@ async function register(event) {
 
 async function logout() {
   localStorage.removeItem("audit-agent-session");
-  window.location.reload();
+  window.location.assign("/");
 }
 
 function applyPermissions() {
@@ -175,8 +177,10 @@ function applyPermissions() {
 
 function renderKnowledgeBases(items) {
   knowledgeBases = items || [];
-  if (!knowledgeBases.some((item) => item.id === selectedKnowledgeBaseId)) {
-    selectedKnowledgeBaseId = knowledgeBases[0]?.id || "";
+  const selected = knowledgeBases.find((item) => item.id === selectedKnowledgeBaseId);
+  if (!selected || (!isAdmin() && !selected.can_manage)) {
+    const manageable = knowledgeBases.find((item) => item.can_manage);
+    selectedKnowledgeBaseId = (manageable || knowledgeBases[0])?.id || "";
   }
   const options = knowledgeBases.map((item) => `
     <option value="${escapeHtml(item.id)}">${escapeHtml(item.name)} (${escapeHtml(item.role)})</option>
@@ -339,6 +343,12 @@ async function refreshOverview() {
     fetchJson("/api/evaluation-results").catch(() => ({ summary: {} })),
     fetchJson("/api/knowledge-bases"),
   ]);
+  if (session?.user) {
+    session.user = { ...session.user, ...me };
+    authVerified = true;
+    localStorage.setItem("audit-agent-session", JSON.stringify(session));
+    syncAuthUi();
+  }
   $("#document-count").textContent = docs.length;
   $("#active-user").textContent = `${me.display_name} (${me.id})`;
   $("#audit-count").textContent = audit.length;
