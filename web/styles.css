@@ -6,6 +6,9 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; }
+body:not([data-user-role="admin"]) [data-admin-only] {
+  display: none !important;
+}
 header {
   min-height: 104px;
   padding: 22px max(24px, calc((100vw - 1180px) / 2));

@@ -71,6 +71,7 @@ function setBusy(button, busy, text) {
 
 function syncAuthUi() {
   const loggedIn = Boolean(session?.access_token);
+  document.body.dataset.userRole = authVerified ? (session?.user?.role || "unknown") : "unknown";
   $("#logout-button").hidden = !loggedIn;
   $("#login-button").disabled = loggedIn;
   $("#login-button").textContent = loggedIn ? "已登录" : "登录";
