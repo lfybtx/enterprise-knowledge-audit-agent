@@ -65,16 +65,24 @@ class HybridRetriever:
             for term, count in occurrences.items()
         }
 
-    def search(self, question: str, limit: int = 3) -> list[RetrievedChunk]:
+    def search(self, question: str, limit: int = 3, strategy: str = "hybrid") -> list[RetrievedChunk]:
         query_terms = Counter(tokenize(question))
         if not query_terms:
             return []
+        if strategy not in {"keyword", "vector", "hybrid"}:
+            raise ValueError("strategy must be one of: keyword, vector, hybrid")
 
         results: list[RetrievedChunk] = []
         for chunk, terms, length in zip(self.chunks, self._doc_terms, self._doc_lengths):
             lexical = self._bm25(query_terms, terms, length)
             semantic = self._cosine(query_terms, terms)
-            score = 0.72 * lexical + 0.28 * semantic + self._domain_boost(question, chunk)
+            boost = self._domain_boost(question, chunk)
+            if strategy == "keyword":
+                score = lexical + boost
+            elif strategy == "vector":
+                score = semantic + (boost * 0.15)
+            else:
+                score = 0.72 * lexical + 0.28 * semantic + boost
             results.append(
                 RetrievedChunk(
                     chunk_id=chunk["id"],
@@ -84,6 +92,9 @@ class HybridRetriever:
                     text=chunk["text"],
                     location=chunk["location"],
                     score=round(score, 4),
+                    lexical_score=round(lexical, 4),
+                    semantic_score=round(semantic, 4),
+                    fusion_score=round(0.72 * lexical + 0.28 * semantic + boost, 4),
                 )
             )
         return sorted(results, key=lambda item: item.score, reverse=True)[:limit]

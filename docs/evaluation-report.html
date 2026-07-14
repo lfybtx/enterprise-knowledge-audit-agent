@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Evaluation Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 32px; color: #1f2937; }
+    h1, h2 { color: #111827; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 20px 0; }
+    .metric { border: 1px solid #d1d5db; border-radius: 6px; padding: 12px; background: #f9fafb; }
+    .metric strong { display: block; font-size: 22px; margin-top: 6px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 12px; }
+    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+    th { background: #f3f4f6; }
+    pre { white-space: pre-wrap; background: #f9fafb; border: 1px solid #d1d5db; padding: 16px; }
+  </style>
+</head>
+<body>
+  <h1>Evaluation Report</h1>
+  <div class="summary">
+    <div class="metric">Total cases<strong>122</strong></div>
+    <div class="metric">Recall@1<strong>98.2%</strong></div>
+    <div class="metric">Citation<strong>98.2%</strong></div>
+    <div class="metric">Refusal<strong>100.0%</strong></div>
+    <div class="metric">Judge pass<strong>98.4%</strong></div>
+  </div>
+  <h2>Retrieval Strategy Comparison</h2>
+  <table>
+    <thead><tr><th>Strategy</th><th>Recall@1</th><th>Recall@3</th><th>Citation</th><th>Answer quality</th><th>Refusal</th><th>Judge pass</th><th>Avg latency</th><th>Failure</th></tr></thead>
+    <tbody><tr><td>keyword_only</td><td>98.2%</td><td>100.0%</td><td>98.2%</td><td>100.0%</td><td>100.0%</td><td>98.4%</td><td>0.15 ms</td><td>0.0%</td></tr>
+<tr><td>vector_only</td><td>90.9%</td><td>100.0%</td><td>90.9%</td><td>100.0%</td><td>100.0%</td><td>91.8%</td><td>0.16 ms</td><td>0.0%</td></tr>
+<tr><td>hybrid</td><td>98.2%</td><td>100.0%</td><td>98.2%</td><td>100.0%</td><td>100.0%</td><td>98.4%</td><td>0.15 ms</td><td>0.0%</td></tr>
+<tr><td>hybrid_rerank</td><td>98.2%</td><td>100.0%</td><td>98.2%</td><td>100.0%</td><td>100.0%</td><td>98.4%</td><td>0.98 ms</td><td>0.0%</td></tr></tbody>
+  </table>
+  <h2>Markdown Source</h2>
+  <pre># Evaluation Report
+
+- Cases file: `data/evaluation_cases.json`
+- Results file: `data/evaluation_results.json`
+- Total cases: 122 (110 positive, 12 negative)
+- Recall@1: 98.2%
+- Recall@3: 100.0%
+- Citation accuracy: 98.2%
+- Answer quality pass rate: 100.0%
+- Refusal accuracy: 100.0%
+- Judge pass rate: 98.4%
+- Average latency: 0.98 ms
+- P95 latency: 1.51 ms
+- Failure rate: 0.0%
+
+## Retrieval Strategy Comparison
+
+| Strategy | Recall@1 | Recall@3 | Citation | Answer quality | Refusal | Judge pass | Avg latency | Failure |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| keyword_only | 98.2% | 100.0% | 98.2% | 100.0% | 100.0% | 98.4% | 0.15 ms | 0.0% |
+| vector_only | 90.9% | 100.0% | 90.9% | 100.0% | 100.0% | 91.8% | 0.16 ms | 0.0% |
+| hybrid | 98.2% | 100.0% | 98.2% | 100.0% | 100.0% | 98.4% | 0.15 ms | 0.0% |
+| hybrid_rerank | 98.2% | 100.0% | 98.2% | 100.0% | 100.0% | 98.4% | 0.98 ms | 0.0% |
+
+## Failure Breakdown
+
+- retrieval: 2
+- citation: 2
+- risk_type: 1
+- conflict: 1
+- evidence_binding: 0
+- review_trigger: 0
+- refusal: 0
+
+## Method
+- Positive cases are evaluated for Recall@1, Recall@3, citation accuracy, answer quality, risk type, conflict, evidence binding, and review trigger behavior.
+- Negative cases are unsafe or unsupported requests; the expected behavior is refusal.
+- `keyword_only`, `vector_only`, `hybrid`, and `hybrid_rerank` are run against the same expanded case set.
+- LLM-as-judge defaults to a deterministic local judge. Set `EVALUATION_JUDGE_PROVIDER=deepseek` with `DEEPSEEK_API_KEY` to use DeepSeek-compatible scoring.
+</pre>
+</body>
+</html>
