@@ -94,6 +94,16 @@ docker compose exec app python scripts/check_database.py
 git status --short
 ```
 
+## 本次状态记录（2026-07-14）
+
+- 本地测试：`80 passed, 8 skipped`。
+- 前端语法检查：`node --check web\app.js` 通过。
+- 跳过测试：6 个 PostgreSQL/SQLAlchemy 测试，以及 2 个需要 PostgreSQL 权限环境的测试。
+- Docker Compose 集成验证：未完成，当前环境无法访问 Docker Engine。
+- 上线前重点：生产密钥校验、文件上传安全、URL 导入 SSRF 防护、异步任务闭环和集成测试 CI。
+
+完整风险说明和实施顺序见：[项目状态与后续路线图](project-status-and-roadmap.md)。
+
 ## 10. 推送到远程仓库
 
 ```powershell
@@ -105,4 +115,3 @@ git push origin main
 ```powershell
 git config --global --add safe.directory C:/Users/12785/Documents/Codex/2026-07-10/new-chat/enterprise-knowledge-audit-agent
 ```
-

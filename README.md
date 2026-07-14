@@ -169,6 +169,21 @@ docker compose exec app python scripts/reset_demo_data.py --all --apply
 docker compose exec app python scripts/check_database.py
 ```
 
+## 当前项目状态
+
+本项目当前适合用于功能演示和内测，核心审计、检索、权限、追踪、评测和导出能力已经具备。最近一次本地验证结果为：`80 passed, 8 skipped`，前端 JavaScript 语法检查通过。
+
+正式部署前仍需完成 PostgreSQL、MinIO、Redis 集成验证，并处理生产密钥校验、文件上传限制、URL 导入 SSRF 防护和异步任务闭环等事项。详细状态和后续计划见：[项目状态与后续路线图](docs/project-status-and-roadmap.md)。
+
+## 重要文档
+
+- [架构说明](docs/architecture.md)
+- [交付检查清单](docs/delivery-checklist.md)
+- [项目状态与后续路线图](docs/project-status-and-roadmap.md)
+- [评测报告](docs/evaluation-report.md)
+- [测试数据说明](docs/test-data.md)
+- [演示脚本](docs/demo-script.md)
+
 ## API 示例
 
 登录：
