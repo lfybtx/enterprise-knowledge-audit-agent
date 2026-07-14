@@ -265,8 +265,9 @@ $("#documents").addEventListener("click", async (event) => {
 });
 
 function renderAuditHistory(audit) {
+  window.auditHistory = audit;
   $("#audit-history").innerHTML = audit.length ? audit.slice(-20).reverse().map((item) => `
-    <div class="audit-item">
+    <div class="audit-item" data-trace-id="${escapeHtml(item.trace_id || "")}">
       <div class="audit-item-main">
         <strong>${escapeHtml(item.event || "audit")} · ${escapeHtml(item.user_id || currentUserId())}</strong>
         <span>${escapeHtml(item.summary || item.question || "暂无摘要")}</span>
@@ -275,6 +276,17 @@ function renderAuditHistory(audit) {
     </div>
   `).join("") : '<div class="document muted">暂无审计记录</div>';
 }
+
+$("#audit-history").addEventListener("click", (event) => {
+  const item = event.target.closest(".audit-item");
+  const record = window.auditHistory?.find((entry) => entry.trace_id === item?.dataset.traceId);
+  if (!record) return;
+  $("#empty").hidden = true;
+  $("#results").hidden = false;
+  $("#answer").textContent = record.summary || record.question || "暂无详情";
+  $("#trace").innerHTML = (record.workflow_trace || []).map((step, index) => `<div class="trace-item"><h3>${index + 1}. ${escapeHtml(step.name)} <small>${escapeHtml(step.duration_ms)} ms</small></h3><p>${escapeHtml(step.detail)}</p></div>`).join("");
+  $(".review-actions")?.setAttribute("hidden", "hidden");
+});
 
 function renderEvaluation(payload) {
   const summary = payload.summary || {};
@@ -400,6 +412,7 @@ async function ask() {
       body: JSON.stringify({ question }),
     });
     lastAuditPayload = payload;
+    $(".review-actions")?.removeAttribute("hidden");
     $("#empty").hidden = true;
     $("#results").hidden = false;
     $("#answer").textContent = payload.answer || "未检索到可用证据。";
@@ -597,9 +610,17 @@ async function submitReview(decision) {
   let corrected_findings = null;
   const raw = $("#corrected-findings")?.value.trim();
   if (raw) { try { corrected_findings = JSON.parse(raw); } catch (_) { $("#review-status").textContent = "修正 JSON 格式错误"; return; } }
-  try { await fetchJson(`/api/audit-runs/${lastAuditPayload.trace_id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, corrected_findings }) }); $("#review-status").textContent = "人工修正已回写"; }
+  try { await fetchJson(`/api/audit-runs/${lastAuditPayload.trace_id}/review`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ decision, corrected_findings }) }); $("#review-status").textContent = "人工修正已回写"; $(".review-actions")?.setAttribute("hidden", "hidden"); }
   catch (error) { $("#review-status").textContent = error.message; }
 }
+
+$("#export-report")?.addEventListener("click", async () => {
+  if (!lastAuditPayload?.question && !window.lastQuestion) return;
+  const question = lastAuditPayload?.question || window.lastQuestion;
+  const response = await fetch("/api/reports/export", { method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ question, export_format: "markdown" }) });
+  if (!response.ok) { alert(await response.text()); return; }
+  const blob = await response.blob(); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "audit-report.md"; link.click(); URL.revokeObjectURL(link.href);
+});
 
 renderDemoQuestions();
 syncAuthUi();
