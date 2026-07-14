@@ -255,7 +255,7 @@ $("#documents").addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-reindex-document], button[data-delete-document]");
   if (!button) return;
   const id = button.dataset.reindexDocument || button.dataset.deleteDocument;
-  if (button.dataset.deleteDocument && !window.confirm("Confirm deleting this document and its index?")) return;
+  if (button.dataset.deleteDocument && !window.confirm("确认删除文档及其索引？此操作不可撤销。")) return;
   setBusy(button, true, "Working");
   try {
     await fetchJson(`/api/documents/${encodeURIComponent(id)}${button.dataset.deleteDocument ? "" : "/reindex"}`, { method: button.dataset.deleteDocument ? "DELETE" : "POST" });
@@ -575,6 +575,7 @@ document.querySelector(".tabs").addEventListener("click", (event) => {
 $("#permission-members").addEventListener("click", async (event) => {
   const button = event.target.closest("button[data-remove-member]");
   if (!button || button.disabled) return;
+  if (!window.confirm("确认移除该知识库用户？")) return;
   setBusy(button, true, "移除中");
   try {
     await fetch(`/api/knowledge-bases/${encodeURIComponent(selectedKnowledgeBaseId)}/members/${encodeURIComponent(button.dataset.removeMember)}`, {
@@ -615,11 +616,17 @@ async function submitReview(decision) {
 }
 
 $("#export-report")?.addEventListener("click", async () => {
-  if (!lastAuditPayload?.question && !window.lastQuestion) return;
-  const question = lastAuditPayload?.question || window.lastQuestion;
-  const response = await fetch("/api/reports/export", { method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: JSON.stringify({ question, export_format: "markdown" }) });
-  if (!response.ok) { alert(await response.text()); return; }
-  const blob = await response.blob(); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "audit-report.md"; link.click(); URL.revokeObjectURL(link.href);
+  const question = lastAuditPayload?.question || lastQuestion;
+  if (!question) { $("#export-status").textContent = "请先运行一次审计"; return; }
+  const export_format = $("#export-format")?.value || "markdown";
+  $("#export-status").textContent = "导出中...";
+  try {
+    const response = await fetch("/api/reports/export", { method: "POST", headers: authHeaders({ "Content-Type": "application/json" }), body: JSON.stringify({ question, export_format }) });
+    if (!response.ok) throw new Error(await response.text());
+    const blob = await response.blob();
+    const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = "audit-report." + (export_format === "pdf" ? "pdf" : "md"); document.body.appendChild(link); link.click(); link.remove(); URL.revokeObjectURL(link.href);
+    $("#export-status").textContent = "已导出";
+  } catch (error) { $("#export-status").textContent = "export failed: " + error.message; }
 });
 
 renderDemoQuestions();
