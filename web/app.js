@@ -281,6 +281,8 @@ $("#audit-history").addEventListener("click", (event) => {
   const item = event.target.closest(".audit-item");
   const record = window.auditHistory?.find((entry) => entry.trace_id === item?.dataset.traceId);
   if (!record) return;
+  lastAuditPayload = { ...record, question: record.question || "" };
+  lastQuestion = lastAuditPayload.question;
   $("#empty").hidden = true;
   $("#results").hidden = false;
   $("#answer").textContent = record.summary || record.question || "暂无详情";
