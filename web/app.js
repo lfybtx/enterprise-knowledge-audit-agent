@@ -144,17 +144,8 @@ async function register(event) {
 }
 
 async function logout() {
-  session = null;
-  knowledgeBases = [];
-  users = [];
-  selectedKnowledgeBaseId = "";
   localStorage.removeItem("audit-agent-session");
-  syncAuthUi();
-  renderKnowledgeBases([]);
-  renderUsers();
-  renderDocuments([], { display_name: "未登录" });
-  renderAuditHistory([]);
-  applyPermissions();
+  window.location.reload();
 }
 
 function applyPermissions() {
@@ -270,7 +261,7 @@ function renderEvaluation(payload) {
 
 function renderMembers(members) {
   const canManage = Boolean(currentKnowledgeBase()?.can_manage);
-  const canRemove = isAdmin() && canManage;
+  const canRemove = canManage;
   $("#permission-members").innerHTML = members.length ? members.map((member) => {
     const isSelf = member.user_id === currentUserId();
     return `

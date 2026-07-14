@@ -57,6 +57,21 @@ def test_owner_can_manage_members_and_editor_cannot():
         assert member["role"] == "viewer"
         assert any(item["user_id"] == member_id for item in members)
 
+        remove_knowledge_base_member(
+            session,
+            knowledge_base_id=kb_id,
+            actor_external_id=owner_id,
+            member_external_id=member_id,
+        )
+        assert all(item["user_id"] != member_id for item in list_knowledge_base_members(session, kb_id, owner_id))
+        with pytest.raises(PermissionError):
+            remove_knowledge_base_member(
+                session,
+                knowledge_base_id=kb_id,
+                actor_external_id=owner_id,
+                member_external_id=owner_id,
+            )
+
         upsert_knowledge_base_member(
             session,
             knowledge_base_id=kb_id,
