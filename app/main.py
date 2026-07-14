@@ -894,7 +894,9 @@ async def upload_document(
             from app.services.tasks import enqueue_task
             task = enqueue_task(
                 task_type="upload", requested_by=current_user.id,
-                document_id=UUID(document_id),
+                # The document is created by the worker; setting this FK before
+                # then makes PostgreSQL reject the queued task.
+                document_id=None,
                 payload={"handler": "upload", "temp_path": str(temp_path), "filename": filename,
                          "content_type": file.content_type or "application/octet-stream", "title": title,
                          "document_id": document_id, "requested_by": current_user.id,
