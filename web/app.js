@@ -440,7 +440,8 @@ async function uploadDocument(event) {
   const button = $("#upload-button");
   setBusy(button, true, "上传中");
   try {
-    await fetchJson("/api/documents/upload", { method: "POST", body: new FormData(event.target) });
+    const accepted = await fetchJson("/api/documents/upload", { method: "POST", body: new FormData(event.target) });
+    if (accepted.task_id) await pollTask(accepted.task_id, $("#upload-status"));
     event.target.reset();
     $("#upload-status").textContent = "已上传并入库";
     await refreshOverview();
@@ -449,6 +450,20 @@ async function uploadDocument(event) {
   } finally {
     setBusy(button, false);
     applyPermissions();
+  }
+}
+
+async function pollTask(taskId, statusNode) {
+  for (;;) {
+    const task = await fetchJson(`/api/tasks/${encodeURIComponent(taskId)}`);
+    if (task.status === "succeeded") {
+      statusNode.textContent = `处理完成 (${task.duration_ms || 0} ms)`;
+      await refreshOverview();
+      return task;
+    }
+    if (task.status === "failed") throw new Error(`任务失败: ${task.error || "未知错误"}`);
+    statusNode.textContent = `处理中，已重试 ${task.retry_count || 0} 次...`;
+    await new Promise((resolve) => setTimeout(resolve, 1500));
   }
 }
 

@@ -9,7 +9,7 @@ from uuid import UUID, uuid4
 
 import httpx
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -884,6 +884,26 @@ async def upload_document(
 ) -> dict[str, str]:
     raw_content = await file.read()
     filename = Path(file.filename or "uploaded.txt").name
+    if os.getenv("REDIS_URL"):
+        document_id = str(uuid4())
+        temp_dir = RUNTIME_DIR / "pending"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_path = temp_dir / f"{document_id}.upload"
+        temp_path.write_bytes(raw_content)
+        try:
+            from app.services.tasks import enqueue_task
+            task = enqueue_task(
+                task_type="upload", requested_by=current_user.id,
+                document_id=UUID(document_id),
+                payload={"handler": "upload", "temp_path": str(temp_path), "filename": filename,
+                         "content_type": file.content_type or "application/octet-stream", "title": title,
+                         "document_id": document_id, "requested_by": current_user.id,
+                         "knowledge_base_id": knowledge_base_id},
+            )
+        except Exception as exc:
+            temp_path.unlink(missing_ok=True)
+            raise HTTPException(status_code=503, detail=f"Task queue is unavailable: {exc}") from exc
+        return JSONResponse(status_code=202, content={"id": document_id, "task_id": task["id"], "status": "queued", "message": "Upload accepted"})
     try:
         parsed_document = parse_document_sections(filename, raw_content)
     except UnsupportedFileTypeError as exc:
@@ -936,6 +956,20 @@ async def upload_document(
         "source": document["source"],
         "storage_backend": stored_object.backend,
     }
+
+
+@app.get("/api/tasks/{task_id}")
+def get_task(task_id: str, current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, Any]:
+    if not os.getenv("DATABASE_URL"):
+        raise HTTPException(status_code=503, detail="Task status requires PostgreSQL")
+    try:
+        from app.services.tasks import task_record
+        task = task_record(task_id)
+    except (KeyError, ValueError):
+        raise HTTPException(status_code=404, detail="Task was not found")
+    if task["requested_by"] != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="You cannot view this task")
+    return task
 
 
 @app.post("/api/documents/ingest-url", status_code=201)
@@ -1098,6 +1132,15 @@ def evaluate(
 ) -> dict[str, object]:
     if not cases:
         raise HTTPException(status_code=400, detail="At least one evaluation case is required")
+    if os.getenv("REDIS_URL"):
+        try:
+            from app.services.tasks import enqueue_task
+            task = enqueue_task(task_type="evaluation", requested_by=current_user.id,
+                                payload={"handler": "evaluation", "requested_by": current_user.id,
+                                         "cases": [case.model_dump() for case in cases]})
+            return JSONResponse(status_code=202, content={"task_id": task["id"], "status": "queued"})
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Task queue is unavailable: {exc}") from exc
     outcomes = []
     for case in cases:
         result = HybridRetriever(user_documents(current_user.id)).search(case.question, limit=1)

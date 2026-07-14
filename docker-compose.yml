@@ -1,4 +1,8 @@
 services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
   db:
     image: pgvector/pgvector:pg16
     environment:
@@ -18,10 +22,13 @@ services:
 
   app:
     build: .
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"
     ports:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
     volumes:
       - ./data/runtime:/app/data/runtime
       - ./data/models:/app/data/models
@@ -30,6 +37,24 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build: .
+    command: sh -c "alembic upgrade head && rq worker --url redis://redis:6379/0 default"
+    env_file:
+      - .env
+    environment:
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./data/runtime:/app/data/runtime
+      - ./data/models:/app/data/models
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   minio:
     image: minio/minio:RELEASE.2025-07-23T15-54-02Z
@@ -51,3 +76,4 @@ services:
 volumes:
   postgres_data:
   minio_data:
+  redis_data:

@@ -12,3 +12,5 @@ python-docx==1.1.2
 openpyxl==3.1.5
 langgraph==0.2.76
 minio==7.2.12
+redis==5.2.1
+rq==2.1.0
