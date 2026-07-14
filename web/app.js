@@ -73,6 +73,8 @@ function syncAuthUi() {
   const loggedIn = Boolean(session?.access_token);
   document.body.dataset.userRole = authVerified ? (session?.user?.role || "unknown") : "unknown";
   $("#logout-button").hidden = !loggedIn;
+  $("#login-username").hidden = loggedIn;
+  $("#login-password").hidden = loggedIn;
   $("#login-button").disabled = loggedIn;
   $("#login-button").textContent = loggedIn ? "已登录" : "登录";
   $("#admin-tab").hidden = !loggedIn;
@@ -88,7 +90,24 @@ function setPage(page) {
   document.querySelectorAll("[data-tab]").forEach((button) => {
     button.classList.toggle("active", button.dataset.tab === page);
   });
-  if (page === "admin") refreshAdminPage();
+  if (page === "admin") {
+    refreshCurrentUser().then(() => refreshAdminPage());
+  }
+}
+
+async function refreshCurrentUser() {
+  if (!session?.access_token) return false;
+  try {
+    const me = await fetchJson("/api/me");
+    session.user = { ...session.user, ...me };
+    authVerified = true;
+    localStorage.setItem("audit-agent-session", JSON.stringify(session));
+  } catch (error) {
+    authVerified = false;
+    console.error("Unable to verify current user", error);
+  }
+  syncAuthUi();
+  return authVerified;
 }
 
 function renderDemoQuestions() {
