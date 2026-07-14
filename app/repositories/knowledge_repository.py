@@ -1039,6 +1039,7 @@ def review_workflow_run(
     user_external_id: str,
     decision: str,
     comment: str | None,
+    corrected_findings: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     try:
         run = session.scalar(
@@ -1056,6 +1057,7 @@ def review_workflow_run(
         run.review_decision = decision
         run.reviewed_by = user_external_id
         run.review_comment = comment
+        run.reviewed_findings = corrected_findings
         run.reviewed_at = func.now()
         run.status = "completed" if decision == "approved" else "rejected"
         session.commit()
@@ -1086,6 +1088,7 @@ def workflow_run_to_record(run: WorkflowRun) -> dict[str, Any]:
         "reviewed_by": run.reviewed_by,
         "review_comment": run.review_comment,
         "reviewed_at": run.reviewed_at.isoformat() if run.reviewed_at else None,
+        "reviewed_findings": run.reviewed_findings,
         "created_at": run.created_at.isoformat() if run.created_at else None,
         "workflow_trace": [
             {

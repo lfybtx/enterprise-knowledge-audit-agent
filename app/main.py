@@ -54,6 +54,7 @@ class ReportExportRequest(BaseModel):
 class WorkflowReviewRequest(BaseModel):
     decision: str = Field(pattern="^(approved|rejected)$")
     comment: Optional[str] = Field(default=None, max_length=500)
+    corrected_findings: Optional[list[dict[str, Any]]] = Field(default=None, max_length=50)
 
 
 class UrlIngestRequest(BaseModel):
@@ -1071,6 +1072,7 @@ def review_audit_run(
             user_external_id=current_user.id,
             decision=payload.decision,
             comment=payload.comment,
+            corrected_findings=payload.corrected_findings,
         )
     except WorkflowReviewError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

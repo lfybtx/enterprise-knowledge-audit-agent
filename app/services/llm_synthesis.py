@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import os
 from dataclasses import dataclass
 from typing import Any, Optional
 
 import httpx
+from pydantic import BaseModel, Field, ValidationError
 
 from app.services.audit import AuditFinding
 from app.services.model_provider import ChatProviderSettings, OPENAI_COMPATIBLE_PROVIDER, ModelConfigurationError
@@ -18,9 +20,24 @@ class LlmSynthesisError(RuntimeError):
 @dataclass(frozen=True)
 class LlmSynthesisResult:
     answer: str
+    risk_summary: str
     input_tokens: int
     output_tokens: int
     trace_data: dict[str, Any]
+
+
+class CitationSchema(BaseModel):
+    document_id: str = Field(min_length=1)
+    evidence_index: int = Field(ge=1)
+
+
+class SynthesisSchema(BaseModel):
+    answer: str = Field(min_length=1)
+    citations: list[CitationSchema] = Field(min_length=1)
+    risk_summary: str = Field(min_length=1)
+
+
+PROMPT_VERSION = os.getenv("CHAT_PROMPT_VERSION", "audit-synthesis-v2")
 
 
 def synthesize_answer(
@@ -76,18 +93,20 @@ def synthesize_answer(
         raise LlmSynthesisError("Chat provider returned invalid JSON") from error
 
     content = _extract_message_content(body)
-    parsed = _parse_strict_json(content)
-    answer = str(parsed["answer"]).strip()
+    parsed = _parse_strict_json(content, evidence)
+    answer = parsed.answer.strip()
     return LlmSynthesisResult(
         answer=answer,
+        risk_summary=parsed.risk_summary.strip(),
         input_tokens=_usage_token(body, "prompt_tokens", _estimate_tokens(prompt)),
         output_tokens=_usage_token(body, "completion_tokens", _estimate_tokens(answer)),
         trace_data={
             "provider": settings.provider,
             "chat_model": settings.chat_model,
-            "schema": "audit_answer_v1",
+            "schema": "audit_answer_v2",
+            "prompt_version": PROMPT_VERSION,
             "answer_source": "openai_compatible_chat",
-            "citation_count": len(parsed["citations"]),
+            "citation_count": len(parsed.citations),
         },
     )
 
@@ -107,6 +126,7 @@ def build_synthesis_prompt(question: str, evidence: list[RetrievedChunk], findin
         f"Question:\n{question}\n\n"
         f"Evidence:\n" + "\n".join(evidence_lines) + "\n\n"
         f"Risk findings:\n" + ("\n".join(finding_lines) or "- none") + "\n\n"
+        f"Prompt version: {PROMPT_VERSION}\n"
         "Return JSON with exactly this shape:\n"
         '{"answer":"string grounded in evidence","citations":[{"document_id":"string","evidence_index":1}],"risk_summary":"string"}'
     )
@@ -123,22 +143,21 @@ def _extract_message_content(body: dict[str, Any]) -> str:
     return content
 
 
-def _parse_strict_json(content: str) -> dict[str, Any]:
+def _parse_strict_json(content: str, evidence: list[RetrievedChunk]) -> SynthesisSchema:
     try:
         parsed = json.loads(content)
     except ValueError as error:
         raise LlmSynthesisError("Chat provider message is not valid JSON") from error
     if not isinstance(parsed, dict):
         raise LlmSynthesisError("Chat provider JSON must be an object")
-    if not isinstance(parsed.get("answer"), str) or not parsed["answer"].strip():
-        raise LlmSynthesisError("Chat provider JSON must include a non-empty answer")
-    citations = parsed.get("citations")
-    if not isinstance(citations, list) or not citations:
-        raise LlmSynthesisError("Chat provider JSON must include at least one citation")
-    for citation in citations:
-        if not isinstance(citation, dict) or not citation.get("document_id"):
-            raise LlmSynthesisError("Each citation must include document_id")
-    return parsed
+    try:
+        result = SynthesisSchema.model_validate(parsed)
+    except ValidationError as error:
+        raise LlmSynthesisError(f"Chat provider response failed schema validation: {error}") from error
+    valid_ids = {item.document_id for item in evidence}
+    if any(item.evidence_index > len(evidence) or item.document_id not in valid_ids for item in result.citations):
+        raise LlmSynthesisError("Chat provider citations do not reference supplied evidence")
+    return result
 
 
 def _usage_token(body: dict[str, Any], key: str, fallback: int) -> int:

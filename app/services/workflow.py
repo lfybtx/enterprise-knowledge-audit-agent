@@ -133,8 +133,9 @@ def _run_sequential_workflow(
     if llm_result is not None:
         answer = llm_result.answer
         report["summary"] = llm_result.answer
+        report["risk_summary"] = llm_result.risk_summary
         report_tools.append("openai_compatible_chat")
-        report_trace_data["llm"] = llm_result.trace_data
+        report_trace_data["llm"] = {**llm_result.trace_data, "risk_summary": llm_result.risk_summary}
         llm_input_tokens = llm_result.input_tokens
         llm_output_tokens = llm_result.output_tokens
     report_prompt = _make_prompt(question, evidence, findings, "report_agent")

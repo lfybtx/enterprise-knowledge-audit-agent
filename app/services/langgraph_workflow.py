@@ -143,8 +143,9 @@ def _report_agent(state: AuditGraphState) -> dict[str, Any]:
     if llm_result is not None:
         answer = llm_result.answer
         report["summary"] = llm_result.answer
+        report["risk_summary"] = llm_result.risk_summary
         tools.append("openai_compatible_chat")
-        trace_data["llm"] = llm_result.trace_data
+        trace_data["llm"] = {**llm_result.trace_data, "risk_summary": llm_result.risk_summary}
         llm_input_tokens = llm_result.input_tokens
         llm_output_tokens = llm_result.output_tokens
     prompt = _make_prompt(state["question"], state.get("evidence", []), state.get("findings", []), "report_agent")
