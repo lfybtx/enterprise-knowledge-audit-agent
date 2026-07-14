@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID
 
@@ -11,6 +12,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.models import (
     DocumentPermission,
     DocumentChunk,
+    IndexTask,
     KnowledgeBase,
     KnowledgeBaseMember,
     KnowledgeDocument,
@@ -532,6 +534,60 @@ def backfill_missing_embeddings(session: Session, batch_size: int = 100) -> int:
     except SQLAlchemyError as exc:
         session.rollback()
         raise DatabaseUnavailableError("Unable to backfill chunk embeddings") from exc
+
+
+def _task_record(task: IndexTask) -> dict[str, Any]:
+    return {"id": str(task.id), "document_id": str(task.document_id) if task.document_id else None,
+            "task_type": task.task_type, "status": task.status, "requested_by": task.requested_by,
+            "processed_count": task.processed_count, "error": task.error,
+            "created_at": task.created_at.isoformat() if task.created_at else None,
+            "finished_at": task.finished_at.isoformat() if task.finished_at else None}
+
+
+def run_index_task(session: Session, *, document_id: UUID | None, task_type: str, requested_by: str) -> dict[str, Any]:
+    """Execute a repair atomically while retaining an operational task record."""
+    task = IndexTask(document_id=document_id, task_type=task_type, requested_by=requested_by, status="running")
+    session.add(task)
+    session.flush()
+    try:
+        if task_type == "backfill_embeddings":
+            count = backfill_missing_embeddings(session, batch_size=10000)
+        else:
+            document = session.get(KnowledgeDocument, document_id)
+            if document is None:
+                raise ValueError("Document was not found")
+            chunks = list(document.chunks)
+            vectors = embed_texts([chunk.text for chunk in chunks])
+            for chunk, vector in zip(chunks, vectors):
+                chunk.embedding = vector
+            count = len(chunks)
+        task.processed_count = count
+        task.status = "succeeded"
+        task.finished_at = datetime.now(timezone.utc)
+        session.commit()
+        return _task_record(task)
+    except Exception as exc:
+        session.rollback()
+        task.status = "failed"
+        task.error = str(exc)
+        task.finished_at = datetime.now(timezone.utc)
+        session.add(task)
+        session.commit()
+        return _task_record(task)
+
+
+def delete_document(session: Session, *, document_id: UUID, actor_external_id: str) -> None:
+    document = session.get(KnowledgeDocument, document_id)
+    if document is None:
+        raise ValueError("Document was not found")
+    if not user_can_write_knowledge_base(session, actor_external_id, document.knowledge_base_id):
+        raise PermissionError("Current user cannot delete this document")
+    session.delete(document)
+    session.commit()
+
+
+def list_index_tasks(session: Session, limit: int = 20) -> list[dict[str, Any]]:
+    return [_task_record(item) for item in session.scalars(select(IndexTask).order_by(IndexTask.created_at.desc()).limit(limit)).all()]
 
 
 def list_document_summaries(session: Session, user_external_id: str | None = None) -> list[dict[str, Any]]:

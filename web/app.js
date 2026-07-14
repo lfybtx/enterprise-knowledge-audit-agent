@@ -223,11 +223,25 @@ async function refreshUsers() {
 function renderDocuments(documents, me) {
   $("#documents").innerHTML = documents.length ? documents.map((document) => `
     <div class="document">
+      ${isAdmin() ? `<div class="document-actions"><button type="button" class="secondary" data-reindex-document="${escapeHtml(document.id)}">Reindex</button><button type="button" class="secondary" data-delete-document="${escapeHtml(document.id)}">Delete</button></div>` : ""}
       <strong>${escapeHtml(document.title)}</strong>
       <span>${escapeHtml(document.source)} · ${escapeHtml(document.chunk_count)} chunks</span>
     </div>
   `).join("") : `<div class="document muted">${escapeHtml(me.display_name)} 当前没有可见文档。</div>`;
 }
+
+$("#documents").addEventListener("click", async (event) => {
+  const button = event.target.closest("button[data-reindex-document], button[data-delete-document]");
+  if (!button) return;
+  const id = button.dataset.reindexDocument || button.dataset.deleteDocument;
+  if (button.dataset.deleteDocument && !window.confirm("Confirm deleting this document and its index?")) return;
+  setBusy(button, true, "Working");
+  try {
+    await fetchJson(`/api/documents/${encodeURIComponent(id)}${button.dataset.deleteDocument ? "" : "/reindex"}`, { method: button.dataset.deleteDocument ? "DELETE" : "POST" });
+    await refreshOverview();
+  } catch (error) { window.alert(error.message); }
+  finally { setBusy(button, false); }
+});
 
 function renderAuditHistory(audit) {
   $("#audit-history").innerHTML = audit.length ? audit.slice(-20).reverse().map((item) => `

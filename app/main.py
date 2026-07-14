@@ -791,6 +791,64 @@ def list_documents(current_user: AuthenticatedUser = Depends(get_authenticated_u
     return [document_summary(item) for item in user_documents(current_user.id)]
 
 
+@app.post("/api/documents/{document_id}/reindex")
+def reindex_document(document_id: str, current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, Any]:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Index repair requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import run_index_task
+        task = run_index_task(session, document_id=parse_uuid_or_400(document_id, "document_id"), task_type="rebuild", requested_by=current_user.id)
+        if task["status"] == "failed":
+            raise HTTPException(status_code=500, detail=task["error"])
+        return task
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    finally:
+        session.close()
+
+
+@app.post("/api/admin/index/backfill")
+def backfill_embeddings(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> dict[str, Any]:
+    require_admin(current_user)
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Index repair requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import run_index_task
+        return run_index_task(session, document_id=None, task_type="backfill_embeddings", requested_by=current_user.id)
+    finally:
+        session.close()
+
+
+@app.get("/api/admin/index/tasks")
+def index_tasks(current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> list[dict[str, Any]]:
+    require_admin(current_user)
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Index task history requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import list_index_tasks
+        return list_index_tasks(session)
+    finally:
+        session.close()
+
+
+@app.delete("/api/documents/{document_id}", status_code=204)
+def remove_document(document_id: str, current_user: AuthenticatedUser = Depends(get_authenticated_user)) -> Response:
+    session = database_session()
+    if session is None:
+        raise HTTPException(status_code=503, detail="Document deletion requires PostgreSQL")
+    try:
+        from app.repositories.knowledge_repository import delete_document
+        delete_document(session, document_id=parse_uuid_or_400(document_id, "document_id"), actor_external_id=current_user.id)
+        return Response(status_code=204)
+    except (PermissionError, ValueError) as error:
+        raise HTTPException(status_code=403 if isinstance(error, PermissionError) else 404, detail=str(error)) from error
+    finally:
+        session.close()
+
+
 @app.post("/api/documents", status_code=201)
 def create_document(
     payload: DocumentCreate,
