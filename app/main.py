@@ -308,6 +308,7 @@ def persist_or_save_runtime(document: dict[str, Any], user_external_id: str) -> 
     """Prefer PostgreSQL; keep a JSON fallback for direct local development."""
     document["owner_id"] = user_external_id
     knowledge_base_id = selected_knowledge_base_uuid(document.get("knowledge_base_id"))
+    # 数据库是生产环境的权威数据源；连接或迁移未就绪时才降级到本地 JSON，保证开发环境仍可运行。
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
@@ -351,6 +352,7 @@ def search_user_evidence(question: str, user_external_id: str):
 
 
 def search_user_evidence_with_diagnostics(question: str, user_external_id: str):
+    # 优先走数据库权限过滤后的混合检索，避免先检索再过滤造成越权证据进入工作流。
     if os.getenv("DATABASE_URL"):
         try:
             from app.db import get_session_factory
@@ -376,6 +378,7 @@ def search_user_evidence_with_diagnostics(question: str, user_external_id: str):
         finally:
             if session is not None:
                 session.close()
+    # 本地模式只检索当前用户可见文档，同时返回统一的诊断结构供 Trace 页面展示。
     hits = HybridRetriever(user_documents(user_external_id)).search(question)
     return hits, {
         "mode": "local lexical fallback",

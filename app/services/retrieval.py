@@ -82,6 +82,7 @@ class HybridRetriever:
             elif strategy == "vector":
                 score = semantic + (boost * 0.15)
             else:
+                # 词法分数更适合精确制度术语，语义分数用于补充同义表达；业务加权保证关键审计动作优先。
                 score = 0.72 * lexical + 0.28 * semantic + boost
             results.append(
                 RetrievedChunk(

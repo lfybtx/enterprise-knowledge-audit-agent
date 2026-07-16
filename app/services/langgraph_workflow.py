@@ -69,6 +69,7 @@ def _build_graph():
     graph.add_edge(START, "retrieval_agent")
     graph.add_edge("retrieval_agent", "audit_agent")
     graph.add_edge("audit_agent", "report_agent")
+    # 只有同时存在证据和审计发现时才进入人工复核，空结果可直接结束，避免制造无依据的审批任务。
     graph.add_conditional_edges(
         "report_agent",
         _next_after_report,
@@ -107,6 +108,7 @@ def _retrieval_agent(state: AuditGraphState) -> dict[str, Any]:
 
 def _audit_agent(state: AuditGraphState) -> dict[str, Any]:
     start = perf_counter()
+    # 规则结果先行计算，LLM 不可用或未返回有效发现时仍能给出确定、可测试的审计结论。
     rule_findings = assess(state["question"], state.get("evidence", []))
     trace_data: dict[str, Any] = {}
     try:
@@ -133,6 +135,7 @@ def _audit_agent(state: AuditGraphState) -> dict[str, Any]:
 
 def _report_agent(state: AuditGraphState) -> dict[str, Any]:
     start = perf_counter()
+    # 报告和引用先由确定性逻辑生成；LLM 只负责改善表述，失败不会破坏主流程。
     report = build_risk_report(state["question"], state.get("evidence", []), state.get("findings", []))
     answer = grounded_answer(state["question"], state.get("evidence", []))
     tools = ["build_risk_report"]

@@ -644,6 +644,7 @@ def hybrid_search_chunks_with_diagnostics(
     """Search with score-stage counts for workflow observability."""
     try:
         documents = load_document_records(session, user_external_id)
+        # 扩大候选集后再融合和重排，避免各检索通道过早截断，把最终 Top K 的相关证据丢掉。
         candidate_limit = max(20, limit * 6)
         lexical_hits = HybridRetriever(documents).search(question, limit=candidate_limit)
         semantic_hits = semantic_search_chunks(session, question, limit=candidate_limit, user_external_id=user_external_id)

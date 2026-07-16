@@ -15,6 +15,7 @@ def enqueue_task(*, task_type: str, requested_by: str, payload: dict[str, Any], 
     from redis import Redis
     from rq import Queue, Retry
 
+    # 先提交任务记录再投递队列，使 API 返回的 task_id 始终可以从数据库查询和追踪。
     session = get_session_factory()()
     task = IndexTask(id=uuid4(), document_id=document_id, task_type=task_type, requested_by=requested_by, status="queued", payload=payload)
     session.add(task)
@@ -60,6 +61,7 @@ def run_recorded_task(task_id: str, handler) -> None:
         task.error = str(exc)
         raise
     finally:
+        # 成功和失败都在 finally 中落盘结束时间，保证异常任务也有完整的可观测状态。
         task.finished_at = datetime.now(timezone.utc)
         task.duration_ms = round((time.perf_counter() - started) * 1000)
         session.commit()
